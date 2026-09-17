@@ -1,0 +1,5 @@
+mcp>=1.0.0
+
+# optional - only needed for exact token counts via ANTHROPIC_API_KEY.
+# without it, mcp-prune falls back to a free local approximation.
+# anthropic>=0.75.0
