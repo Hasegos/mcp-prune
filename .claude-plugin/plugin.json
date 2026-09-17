@@ -1,5 +1,5 @@
 {
   "name": "mcp-prune",
   "description": "Audit MCP servers by actual usage vs context-token cost, and recommend which to remove.",
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

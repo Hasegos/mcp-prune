@@ -91,10 +91,13 @@ def count_calls(days: int = 30) -> dict:
 
 
 def count_calls_by_tool(days: int = 30) -> dict:
-    """Return {(server, bare_tool_name): calls} for the per-tool breakdown."""
-    raw_calls, _ = _scan(days)
+    """Return {(server, bare_tool_name): {"calls": int, "last_used": float|None}}."""
+    raw_calls, raw_last = _scan(days)
     return {
-        (server_of(tool_name), bare_tool_name(tool_name)): n
+        (server_of(tool_name), bare_tool_name(tool_name)): {
+            "calls": n,
+            "last_used": raw_last[tool_name] or None,
+        }
         for tool_name, n in raw_calls.items()
     }
 

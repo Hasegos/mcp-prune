@@ -4,6 +4,7 @@ ones to remove. Entry point for the /mcp-prune skill.
 import argparse
 import asyncio
 import sys
+import time
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -18,19 +19,34 @@ from schema_cost import estimate_all
 ROI_REVIEW_THRESHOLD = 500  # tokens spent per actual call above which we flag for review
 
 
+def fmt_last_used(ts) -> str:
+    """Epoch seconds -> '3일 전' / '오늘' / '사용 안 함'."""
+    if not ts:
+        return "사용 안 함"
+    days = int((time.time() - ts) // 86400)
+    if days <= 0:
+        return "오늘"
+    return f"{days}일 전"
+
+
 def build_rows(servers: dict, usage: dict, costs: dict) -> list:
     rows = []
     for name in servers:
-        calls = usage.get(name, {}).get("calls", 0)
+        info = usage.get(name, {})
+        calls = info.get("calls", 0)
+        last_used = info.get("last_used")
         cost_info = costs.get(name, {})
         if "error" in cost_info:
-            rows.append({"name": name, "cost": None, "calls": calls, "roi": None, "note": cost_info["error"]})
+            rows.append({
+                "name": name, "cost": None, "calls": calls, "roi": None,
+                "note": cost_info["error"], "last_used": last_used,
+            })
             continue
         cost = cost_info["cost_tokens"]
         roi = cost / max(1, calls)
         rows.append({
             "name": name, "cost": cost, "calls": calls, "roi": roi,
-            "note": "", "approx": cost_info.get("approx", False),
+            "note": "", "approx": cost_info.get("approx", False), "last_used": last_used,
         })
     # worst ROI (most expensive per call) first; unmeasurable servers last
     rows.sort(key=lambda r: (r["roi"] is None, -(r["roi"] or 0)))
@@ -39,14 +55,15 @@ def build_rows(servers: dict, usage: dict, costs: dict) -> list:
 
 def render_markdown(rows: list) -> str:
     lines = [
-        "| 서버 | 세션당 비용 | 호출횟수 | ROI(비용/호출) | 권고 |",
-        "|---|---|---|---|---|",
+        "| 서버 | 세션당 비용 | 호출횟수 | 마지막 사용 | ROI(비용/호출) | 권고 |",
+        "|---|---|---|---|---|---|",
     ]
     remove_cmds = []
     any_approx = False
     for r in rows:
+        last_used = fmt_last_used(r["last_used"])
         if r["cost"] is None:
-            lines.append(f"| {r['name']} | 측정불가 | {r['calls']} | - | ⚪ {r['note']} |")
+            lines.append(f"| {r['name']} | 측정불가 | {r['calls']} | {last_used} | - | ⚪ {r['note']} |")
             continue
         if r["calls"] == 0:
             verdict = "🔴 제거 권장"
@@ -59,7 +76,7 @@ def render_markdown(rows: list) -> str:
         if r.get("approx"):
             cost_str = "~" + cost_str
             any_approx = True
-        lines.append(f"| {r['name']} | {cost_str} | {r['calls']} | {r['roi']:.0f} | {verdict} |")
+        lines.append(f"| {r['name']} | {cost_str} | {r['calls']} | {last_used} | {r['roi']:.0f} | {verdict} |")
 
     if any_approx:
         lines.append("")
@@ -80,10 +97,11 @@ def build_tool_rows(costs: dict, tool_usage: dict) -> list:
     rows = []
     for server, cost_info in costs.items():
         for t in cost_info.get("tools", []):
-            calls = tool_usage.get((server, t["name"]), 0)
+            usage = tool_usage.get((server, t["name"]), {})
             rows.append({
                 "server": server, "tool": t["name"], "cost": t["cost_tokens"],
-                "calls": calls, "approx": cost_info.get("approx", False),
+                "calls": usage.get("calls", 0), "last_used": usage.get("last_used"),
+                "approx": cost_info.get("approx", False),
             })
     rows.sort(key=lambda r: (r["server"], -r["cost"]))
     return rows
@@ -95,14 +113,14 @@ def render_tool_markdown(rows: list) -> str:
     lines = [
         "",
         "### 도구별 상세",
-        "| 서버 | 도구 | 비용 | 호출횟수 |",
-        "|---|---|---|---|",
+        "| 서버 | 도구 | 비용 | 호출횟수 | 마지막 사용 |",
+        "|---|---|---|---|---|",
     ]
     for r in rows:
         cost_str = f"{r['cost']:,} 토큰"
         if r["approx"]:
             cost_str = "~" + cost_str
-        lines.append(f"| {r['server']} | {r['tool']} | {cost_str} | {r['calls']} |")
+        lines.append(f"| {r['server']} | {r['tool']} | {cost_str} | {r['calls']} | {fmt_last_used(r['last_used'])} |")
     return "\n".join(lines)
 
 

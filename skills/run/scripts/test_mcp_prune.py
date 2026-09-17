@@ -46,12 +46,12 @@ def test_build_tool_rows():
             ],
         }
     }
-    tool_usage = {("notion", "search"): 5}  # create_page never called
+    tool_usage = {("notion", "search"): {"calls": 5, "last_used": None}}  # create_page never called
     rows = build_tool_rows(costs, tool_usage)
     assert rows[0]["tool"] == "create_page"  # sorted by cost desc within server
     assert rows[1]["calls"] == 5
     md = render_tool_markdown(rows)
-    assert "create_page" in md and "~900 토큰" in md
+    assert "create_page" in md and "~900 토큰" in md and "사용 안 함" in md
 
 
 if __name__ == "__main__":
