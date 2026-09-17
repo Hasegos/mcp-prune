@@ -61,11 +61,12 @@ def _to_anthropic_tools(mcp_tools):
     ]
 
 
-def _token_cost_exact(client, model: str, tools: list) -> int:
-    baseline_msgs = [{"role": "user", "content": "x"}]
-    with_tools = client.messages.count_tokens(model=model, messages=baseline_msgs, tools=tools)
-    without_tools = client.messages.count_tokens(model=model, messages=baseline_msgs)
-    return with_tools.input_tokens - without_tools.input_tokens
+BASELINE_MSGS = [{"role": "user", "content": "x"}]
+
+
+def _token_cost_exact(client, model: str, tools: list, baseline: int) -> int:
+    with_tools = client.messages.count_tokens(model=model, messages=BASELINE_MSGS, tools=tools)
+    return with_tools.input_tokens - baseline
 
 
 def _token_cost_approx(tools: list) -> int:
@@ -80,10 +81,16 @@ async def _estimate_one(sem: asyncio.Semaphore, client, model: str, name: str, c
             mcp_tools = await asyncio.wait_for(_list_tools(cfg), timeout=CONNECT_TIMEOUT)
             tools = _to_anthropic_tools(mcp_tools)
             if client is not None:
-                cost = _token_cost_exact(client, model, tools)
-                return name, {"cost_tokens": cost, "tool_count": len(tools), "approx": False}
-            cost = _token_cost_approx(tools)
-            return name, {"cost_tokens": cost, "tool_count": len(tools), "approx": True}
+                baseline = client.messages.count_tokens(model=model, messages=BASELINE_MSGS).input_tokens
+                total = _token_cost_exact(client, model, tools, baseline)
+                per_tool = [
+                    {"name": t["name"], "cost_tokens": _token_cost_exact(client, model, [t], baseline)}
+                    for t in tools
+                ]
+                return name, {"cost_tokens": total, "tool_count": len(tools), "approx": False, "tools": per_tool}
+            total = _token_cost_approx(tools)
+            per_tool = [{"name": t["name"], "cost_tokens": _token_cost_approx([t])} for t in tools]
+            return name, {"cost_tokens": total, "tool_count": len(tools), "approx": True, "tools": per_tool}
         except Exception as exc:  # noqa: BLE001 - many distinct MCP/subprocess failure modes
             return name, {"error": _safe_error(exc)}
 

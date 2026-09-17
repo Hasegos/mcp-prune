@@ -3,13 +3,20 @@
 Claude Code plugin that audits configured MCP servers: how many context
 tokens each one's tool schemas cost per session, versus how often its
 tools were actually called in your recent session logs. Ranks servers by
-cost-per-use and suggests `claude mcp remove` for dead weight.
+cost-per-use and suggests `claude mcp remove` for dead weight — plus a
+per-tool breakdown so you can see exactly which tool is the expensive one.
 
 ## Install
 
 ```
-claude plugin marketplace add <this-repo>
-claude plugin install mcp-prune
+claude plugin marketplace add Hasegos/mcp-prune
+claude plugin install mcp-prune@mcp-prune-marketplace
+```
+
+Then `/reload-plugins` (or start a new session) and run:
+
+```
+/mcp-prune:run
 ```
 
 ## Requirements
@@ -29,26 +36,31 @@ Most people can just skip the API key.
 ## Usage
 
 ```
-/mcp-prune
+/mcp-prune:run
 ```
 
 or directly:
 
 ```
-python skills/mcp-prune/scripts/report.py --days 30
+python skills/run/scripts/report.py --days 30
 ```
+
+Output is two markdown tables: a per-server ranking with removal
+recommendations, and a per-tool cost/usage breakdown underneath it.
 
 ## Self-check
 
 ```
-python skills/mcp-prune/scripts/test_mcp_prune.py
+python skills/run/scripts/test_mcp_prune.py
 ```
 
 ## How it works
 
-See `skills/mcp-prune/scripts/`:
+See `skills/run/scripts/`:
 - `inventory.py` — reads `.mcp.json` / `~/.claude.json` for configured servers
-- `parse_logs.py` — counts actual tool calls from `~/.claude/projects/**/*.jsonl`
+- `parse_logs.py` — counts actual tool calls (per server and per tool) from
+  `~/.claude/projects/**/*.jsonl`
 - `schema_cost.py` — connects to each server via the `mcp` SDK, sizes its
-  tool schemas with Anthropic's `count_tokens` endpoint
-- `report.py` — ranks servers by cost ÷ calls, prints a markdown report
+  tool schemas (server total + per-tool) with Anthropic's `count_tokens`
+  endpoint or a free local approximation
+- `report.py` — ranks servers by cost ÷ calls, prints both markdown reports

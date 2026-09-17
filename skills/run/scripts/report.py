@@ -12,7 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, str(Path(__file__).parent))
 
 from inventory import list_servers
-from parse_logs import count_calls
+from parse_logs import count_calls, count_calls_by_tool
 from schema_cost import estimate_all
 
 ROI_REVIEW_THRESHOLD = 500  # tokens spent per actual call above which we flag for review
@@ -75,6 +75,37 @@ def render_markdown(rows: list) -> str:
     return "\n".join(lines)
 
 
+def build_tool_rows(costs: dict, tool_usage: dict) -> list:
+    """Per-tool breakdown across all servers, not just the server rollup."""
+    rows = []
+    for server, cost_info in costs.items():
+        for t in cost_info.get("tools", []):
+            calls = tool_usage.get((server, t["name"]), 0)
+            rows.append({
+                "server": server, "tool": t["name"], "cost": t["cost_tokens"],
+                "calls": calls, "approx": cost_info.get("approx", False),
+            })
+    rows.sort(key=lambda r: (r["server"], -r["cost"]))
+    return rows
+
+
+def render_tool_markdown(rows: list) -> str:
+    if not rows:
+        return ""
+    lines = [
+        "",
+        "### 도구별 상세",
+        "| 서버 | 도구 | 비용 | 호출횟수 |",
+        "|---|---|---|---|",
+    ]
+    for r in rows:
+        cost_str = f"{r['cost']:,} 토큰"
+        if r["approx"]:
+            cost_str = "~" + cost_str
+        lines.append(f"| {r['server']} | {r['tool']} | {cost_str} | {r['calls']} |")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Audit MCP servers by cost vs actual usage.")
     parser.add_argument("--days", type=int, default=30, help="session log window in days")
@@ -86,10 +117,16 @@ def main():
         return
 
     usage = count_calls(days=args.days)
+    tool_usage = count_calls_by_tool(days=args.days)
     costs = asyncio.run(estimate_all(servers))
 
     rows = build_rows(servers, usage, costs)
     print(render_markdown(rows))
+
+    tool_rows = build_tool_rows(costs, tool_usage)
+    tool_md = render_tool_markdown(tool_rows)
+    if tool_md:
+        print(tool_md)
 
 
 if __name__ == "__main__":
