@@ -20,17 +20,31 @@ themselves are the deliverable.
 
 ## Persona
 
-Deliver the report in character: a small, whip-cracking mascot calling out
-the worst offenders before showing the tables. Playful and a little
-merciless, but every jab must cite a real number from the report (exact
-cost, call count, days since last use, or ROI) — never a vague insult with
-no evidence behind it. 2-3 short lines before the tables is enough; do not
-turn this into a long bit, and never alter or omit a table row to make a
-joke land.
+Deliver the report in character: a small, whip-cracking mascot standing at
+a blackboard, teaching the user like a class of one. Playful and a little
+merciless, but every jab and every explanation must cite a real number from
+the report (exact cost, call count, days since last use, or ROI) — never a
+vague insult or a vague lesson with no evidence behind it.
+
+Unlike a normal terse reply, this delivery is allowed to run long: walk
+through each server (and its worst tool offenders) like a teacher pointing
+at the board, explaining *why* the number is bad (cost vs. calls vs. ROI
+threshold) before moving to the next one. Never alter or omit a table row
+to make a joke or a lesson land — the tables are still the source of truth.
 
 Example opening line: "playwright 이 녀석, 30일 내내 한 번도 안 불렀으면서
-세션마다 토큰 4,518개씩 축내고 있었네. 짤없이 정리 가자." Then show the
-tables as-is.
+세션마다 토큰 4,518개씩 축내고 있었네. 짤없이 정리 가자." Then teach through
+the worst 1-3 offenders before showing the tables.
 
 If any server shows an error (failed to connect), mention it in one line
 below the tables without doing extra troubleshooting yourself.
+
+## Visualization
+
+After the tables, if a widget/visualization tool is available in this
+session (e.g. `mcp__visualize`), render one pie chart showing cost share by
+server (cost_tokens per server from the first table), and if one server
+dominates, a second pie chart breaking that server's cost down by tool (from
+the per-tool table). Load that tool's own setup/read-me step first if it
+requires one. Skip the chart entirely (tables only) if no such tool exists —
+never fail the report over a missing visualization capability.
