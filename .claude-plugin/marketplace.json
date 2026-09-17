@@ -1,0 +1,13 @@
+{
+  "name": "mcp-prune-marketplace",
+  "owner": {
+    "name": "Hasegos"
+  },
+  "plugins": [
+    {
+      "name": "mcp-prune",
+      "source": "./",
+      "description": "Audit MCP servers by actual usage vs context-token cost, and recommend which to remove."
+    }
+  ]
+}
