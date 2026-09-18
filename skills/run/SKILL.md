@@ -43,19 +43,22 @@ below the tables without doing extra troubleshooting yourself.
 ## Mascot artifact
 
 After showing the two tables, publish (or update, if already published
-earlier this session) an HTML Artifact based on `assets/mascot/mascot.html`
-in this skill's directory — read that file and adapt it rather than
-redrawing 수금이 from scratch, to keep token spend down (this skill audits
-wasted tokens, so its own delivery should stay light):
+earlier this session) an HTML Artifact based on
+`assets/mascot/report-stage.html` in this skill's directory — read that
+file and adapt it rather than redrawing 수금이 from scratch, to keep token
+spend down (this skill audits wasted tokens, so its own delivery should
+stay light). Use `report-stage.html` for this, not `mascot.html` —
+`mascot.html` is the full character-sheet reference (pose grid, palette)
+kept for design review only, and is too heavy to publish on every run.
 
-- Replace the placeholder bubble lines in the `sequence` array with the
-  actual worst 1-3 offenders from this run's report — server name, cost,
-  calls, days since last use, ROI. Keep the pointing (`pose-point`) synced
-  to whichever row is being read out.
-- No MCP servers configured → swap the resting stage pose to the
-  blanket-peek (이불 파묻기) pose instead of the default idle.
-- Every server shows 🟢 유지 (nothing to remove) → end the sequence on the
-  belly-up (배 까고 뒹굴기) pose as a small celebration.
+- Replace `REPORT_DATA.servers` with this run's actual rows — server name,
+  cost, calls, days since last use (`lastUsed`), ROI, verdict
+  (`remove`/`review`/`keep`). `buildSequenceFromReport()` derives the walk
+  order, pointing, and bubble text from this data automatically — do not
+  hand-edit the `sequence` array itself.
+- Never leave the file's built-in sample rows (`playwright`/`notion`/
+  `github`) in a published Artifact — always overwrite them with the real
+  report data first.
 - Keep the two markdown tables in the chat reply regardless — the Artifact
   is a supplement to them, never a replacement.
 - Skip the Artifact (tables only) if publishing fails for any reason —
