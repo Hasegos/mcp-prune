@@ -1,4 +1,4 @@
-<title>몽글이 캐릭터 시트</title>
+<title>수금이 캐릭터 시트</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
   :root{
@@ -109,16 +109,16 @@
 
 <div class="wrap">
   <div>
-    <h1>몽글이 캐릭터 시트</h1>
-    <p class="lead">mcp-prune 리포트를 옆에서 짚어가며 설명해줄 마스코트 초안이에요. 반려견 사진을 바탕으로 그린 오리지널 2D 도트 캐릭터예요.</p>
-    <p class="note">임시 이름 "몽글이" — 마음에 안 들면 언제든 바꿔주세요 🐾</p>
+    <h1>수금이 캐릭터 시트</h1>
+    <p class="lead">mcp-prune 리포트를 옆에서 짚어가며 설명해줄 마스코트예요. 반려견 사진을 바탕으로 그린 오리지널 2D 도트 캐릭터예요.</p>
+    <p class="note">이름 "수금이" 확정 🐾</p>
   </div>
 
   <div class="stage" id="stage">
     <span class="state-chip" id="stateChip">지금: 인사하는 중</span>
-    <svg class="mascot-svg" id="mascotSvg" viewBox="0 0 18 16" role="img" aria-label="몽글이 마스코트"></svg>
+    <svg class="mascot-svg" id="mascotSvg" viewBox="0 0 18 16" role="img" aria-label="수금이 마스코트"></svg>
     <div class="stage-floor"></div>
-    <div class="bubble" id="bubble">몽글몽글~ 리포트 갖고 왔어요!<small>예시 대사 — 실제 실행 시 리포트의 실제 수치로 대체됩니다</small></div>
+    <div class="bubble" id="bubble">수금하러 왔습니다! 리포트 가져왔어요~<small>예시 대사 — 실제 실행 시 리포트의 실제 수치로 대체됩니다</small></div>
   </div>
 
   <div>
@@ -200,7 +200,7 @@ const EAR_ROWS = [
 ];
 
 /**
- * 몽글이 한 마리 분량의 SVG 내용을 조립한다. 파트별로 <g> 로 감싸 CSS 애니메이션 훅을 제공한다.
+ * 수금이 한 마리 분량의 SVG 내용을 조립한다. 파트별로 <g> 로 감싸 CSS 애니메이션 훅을 제공한다.
  * 위치(translate/scale)는 바깥쪽 <g>의 SVG 속성으로, 회전 애니메이션은 안쪽 <g>의 CSS 클래스로 분리한다 —
  * 같은 요소에 CSS transform과 SVG transform 속성을 동시에 걸면 CSS가 속성을 완전히 덮어써 버리기 때문.
  * @returns {string} <svg> 내부에 삽입할 마크업
@@ -305,7 +305,7 @@ const stage = document.getElementById('stage');
 const chip = document.getElementById('stateChip');
 const bubble = document.getElementById('bubble');
 const sequence = [
-  { cls:'pose-idle', label:'지금: 인사하는 중', text:'몽글몽글~ 리포트 갖고 왔어요!' },
+  { cls:'pose-idle', label:'지금: 인사하는 중', text:'수금하러 왔습니다! 리포트 가져왔어요~' },
   { cls:'pose-walk', label:'지금: 통통 등장', text:'짜잔, 표 옆으로 폴짝!' },
   { cls:'pose-point', label:'지금: 콕 짚는 중', text:'요기, 이 서버 좀 봐주세요' },
   { cls:'pose-talk', label:'지금: 설명하는 중', text:'30일간 호출 0번이었어요, 같이 정리해요' },
