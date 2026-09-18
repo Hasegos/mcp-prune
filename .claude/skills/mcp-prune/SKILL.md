@@ -6,10 +6,17 @@ description: Audit configured MCP servers by actual usage vs context-token cost,
      웹/모바일 세션은 .claude/skills/를 커밋만 하면 자동 인식하므로 여기 둠.
      skills/run/SKILL.md를 고치면 이 파일도 같이 고칠 것. -->
 
-Run `python scripts/report.py --days 30` from this skill's directory
-(install dependencies first with `pip install -r ../../requirements.txt`
-if the `mcp` package is missing — check with a quick import attempt before
-installing anything).
+Run `python <skill base directory>/scripts/report.py --days 30`, using
+this skill's base directory (shown when it was invoked) to build the path
+— **do not `cd` into it first.** `report.py` looks for a project-level
+`.mcp.json` by walking up from the current working directory, so `cd`ing
+into the skill's own directory (which lives outside the project when
+installed via the plugin marketplace) makes it search the wrong directory
+tree and silently miss the project's real config. Stay in the project's
+working directory and reference the script by path instead.
+
+Install dependencies first with `pip install mcp` if the `mcp` package is
+missing — check with a quick import attempt before installing anything.
 
 `ANTHROPIC_API_KEY` is optional. If set, costs are exact (Anthropic's
 count_tokens endpoint). If not set, costs are a free local approximation
@@ -60,6 +67,10 @@ kept for design review only, and is too heavy to publish on every run.
   (`remove`/`review`/`keep`). `buildSequenceFromReport()` derives the walk
   order, pointing, and bubble text from this data automatically — do not
   hand-edit the `sequence` array itself.
+- Leave out any server `report.py` printed with cost `측정불가` (a failed
+  connection — `build_rows()`'s `cost: None` rows) — it has no ROI to rank
+  by, so it doesn't belong in this array. Mention it in the one-line error
+  note the Persona section already calls for instead.
 - Never leave the file's built-in sample rows (`playwright`/`notion`/
   `github`) in a published Artifact — always overwrite them with the real
   report data first.

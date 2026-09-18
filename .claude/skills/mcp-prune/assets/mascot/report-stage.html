@@ -316,9 +316,22 @@ const REPORT_DATA = {
 };
 
 /**
+ * 숫자를 안전하게 포맷한다. null/undefined(연결 실패 등으로 비용을 못 잰 서버)는
+ * "측정불가"로 표시해 toLocaleString() 호출로 인한 TypeError를 막는다.
+ * @param {number|null|undefined} n
+ * @returns {string}
+ */
+function fmtNum(n){
+  return (n === null || n === undefined) ? '측정불가' : n.toLocaleString();
+}
+
+/**
  * 리포트 데이터로부터 무대 시퀀스(등장 → 최악 offender별 콕 짚기·설명 → 마무리)를 만든다.
  * 서버가 없으면 이불 파묻기로, 전부 keep이면 배 까고 뒹굴기로 마무리한다.
- * @param {{servers: Array<{name:string,cost:number,calls:number,lastUsed:string,roi:number,verdict:string}>}} data
+ * cost/roi를 못 잰(연결 실패) 서버는 ROI로 순위를 매길 수 없으므로 "최악 offender"
+ * 선정에서는 제외한다 — SKILL.md 지침상 애초에 REPORT_DATA에 넣지 않는 게 정석이지만,
+ * 혹시 섞여 들어와도 여기서 걸러 페이지가 죽지 않게 한다.
+ * @param {{servers: Array<{name:string,cost:(number|null),calls:number,lastUsed:string,roi:(number|null),verdict:string}>}} data
  * @returns {Array<{cls:string,label:string,text:string}>}
  */
 function buildSequenceFromReport(data){
@@ -326,15 +339,16 @@ function buildSequenceFromReport(data){
   if (servers.length === 0){
     return [{ cls:'pose-rest-peek', label:'지금: 조용히 대기 중', text:'지금은 걷을 빚이 하나도 없어요, MCP 서버가 없네요' }];
   }
-  const worst = [...servers].sort((a, b) => b.roi - a.roi).slice(0, 3);
+  const rankable = servers.filter(s => s.roi !== null && s.roi !== undefined);
+  const worst = [...rankable].sort((a, b) => b.roi - a.roi).slice(0, 3);
   const seq = [
     { cls:'pose-idle', label:'지금: 인사하는 중', text:'수금하러 왔습니다! 리포트 가져왔어요~' },
     { cls:'pose-walk', label:'지금: 통통 등장', text:'짜잔, 표 옆으로 폴짝!' },
   ];
   for (const s of worst){
-    const roiTxt = s.calls === 0 ? '호출 0번' : `호출 ${s.calls}번, ROI ${s.roi.toLocaleString()}`;
+    const roiTxt = s.calls === 0 ? '호출 0번' : `호출 ${s.calls}번, ROI ${fmtNum(s.roi)}`;
     seq.push({ cls:'pose-point', label:`지금: ${s.name} 콕 짚는 중`, text:`${s.name}, 이 서버 좀 봐주세요` });
-    seq.push({ cls:'pose-talk', label:'지금: 설명하는 중', text:`토큰 ${s.cost.toLocaleString()}개 쓰는데 ${roiTxt}, 마지막 사용 ${s.lastUsed}이에요` });
+    seq.push({ cls:'pose-talk', label:'지금: 설명하는 중', text:`토큰 ${fmtNum(s.cost)}개 쓰는데 ${roiTxt}, 마지막 사용 ${s.lastUsed}이에요` });
   }
   const allGreen = servers.every(s => s.verdict === 'keep');
   seq.push(allGreen
@@ -484,7 +498,7 @@ function renderUsageDonut(servers){
     detail.appendChild(strong);
     const rest = document.createElement('span');
     rest.textContent =
-      ` — 호출 ${s.calls.toLocaleString()}번(전체의 ${pct}%) · 비용 ${s.cost.toLocaleString()} 토큰 · ROI ${s.roi.toLocaleString()} · 마지막 사용 ${s.lastUsed}`;
+      ` — 호출 ${s.calls.toLocaleString()}번(전체의 ${pct}%) · 비용 ${fmtNum(s.cost)} 토큰 · ROI ${fmtNum(s.roi)} · 마지막 사용 ${s.lastUsed}`;
     detail.appendChild(rest);
     const badge = document.createElement('span');
     const verdictLabel = { remove:'제거 권장', review:'검토', keep:'유지' }[s.verdict] || s.verdict;

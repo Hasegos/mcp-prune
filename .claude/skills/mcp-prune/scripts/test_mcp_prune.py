@@ -1,6 +1,6 @@
 """ponytail self-check: run `python test_mcp_prune.py` directly. No framework."""
 from inventory import _find_mcp_servers
-from parse_logs import bare_tool_name, server_of
+from parse_logs import _event_time, bare_tool_name, server_of
 from report import build_rows, build_tool_rows, render_markdown, render_tool_markdown
 
 
@@ -16,11 +16,22 @@ def test_bare_tool_name():
     assert bare_tool_name("Bash") is None
 
 
+def test_event_time():
+    assert _event_time({"timestamp": "2026-09-18T00:49:24.052Z"}) is not None
+    assert _event_time({"timestamp": "not-a-date"}) is None
+    assert _event_time({}) is None  # missing field -> caller falls back to file mtime
+
+
 def test_find_mcp_servers_nested():
-    out = {}
     data = {"projects": {"/x": {"mcpServers": {"foo": {"command": "node"}}}}}
-    _find_mcp_servers(data, "test", out)
-    assert out["foo"]["command"] == "node"
+
+    matching = {}
+    _find_mcp_servers(data, "test", matching, "/x")
+    assert matching["foo"]["command"] == "node"
+
+    other_project = {}
+    _find_mcp_servers(data, "test", other_project, "/y")
+    assert "foo" not in other_project  # unrelated project's servers must not leak in
 
 
 def test_build_rows_and_ranking():
@@ -57,6 +68,7 @@ def test_build_tool_rows():
 if __name__ == "__main__":
     test_server_of()
     test_bare_tool_name()
+    test_event_time()
     test_find_mcp_servers_nested()
     test_build_rows_and_ranking()
     test_build_tool_rows()

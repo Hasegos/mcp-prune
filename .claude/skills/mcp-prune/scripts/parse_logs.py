@@ -4,16 +4,29 @@ Claude Code's local session transcripts (~/.claude/projects/**/*.jsonl).
 import json
 import time
 from collections import Counter, defaultdict
+from datetime import datetime
 from pathlib import Path
 
 SESSIONS_ROOT = Path.home() / ".claude" / "projects"
 
 
-def _tool_use_names(line: str):
+def _event_time(event: dict):
+    """Parse a session event's own ISO 8601 `timestamp` field (e.g.
+    "2026-09-18T00:49:24.052Z") into epoch seconds. Returns None when the
+    field is missing or malformed - the caller falls back to the
+    containing file's mtime in that case.
+    """
+    ts = event.get("timestamp")
+    if not isinstance(ts, str):
+        return None
     try:
-        event = json.loads(line)
-    except json.JSONDecodeError:
-        return
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def _tool_use_names(event: dict):
+    """Yield each tool_use block's name from one parsed session event."""
     message = event.get("message")
     if not isinstance(message, dict):
         return
@@ -45,8 +58,15 @@ def bare_tool_name(tool_name: str):
 
 def _scan(days: int) -> tuple[Counter, dict]:
     """One pass over recent session logs. Returns (calls_per_full_tool_name,
-    last_used_mtime_per_full_tool_name). Both count_calls() and
+    last_used_epoch_per_full_tool_name). Both count_calls() and
     count_calls_by_tool() derive from this so logs are only read once.
+
+    Each tool call is filtered and timestamped by its own event
+    `timestamp` field, not the containing file's mtime - a session file
+    that's resumed/appended to over weeks would otherwise misdate every
+    call inside it (including ones from well outside the --days window)
+    as having just happened, since mtime reflects the file's last write,
+    not any individual event's time.
     """
     cutoff = time.time() - days * 86400
     calls = Counter()
@@ -57,18 +77,27 @@ def _scan(days: int) -> tuple[Counter, dict]:
 
     for jsonl_path in SESSIONS_ROOT.glob("**/*.jsonl"):
         try:
-            mtime = jsonl_path.stat().st_mtime
+            file_mtime = jsonl_path.stat().st_mtime
         except OSError:
             continue
-        if mtime < cutoff:
-            continue
+        if file_mtime < cutoff:
+            continue  # file untouched since the window opened - cheap skip
         try:
             with jsonl_path.open(encoding="utf-8", errors="ignore") as f:
                 for line in f:
-                    for tool_name in _tool_use_names(line):
+                    try:
+                        event = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    event_time = _event_time(event)
+                    if event_time is None:
+                        event_time = file_mtime
+                    if event_time < cutoff:
+                        continue
+                    for tool_name in _tool_use_names(event):
                         if server_of(tool_name):
                             calls[tool_name] += 1
-                            last_used[tool_name] = max(last_used[tool_name], mtime)
+                            last_used[tool_name] = max(last_used[tool_name], event_time)
         except OSError:
             continue
 

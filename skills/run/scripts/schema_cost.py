@@ -38,10 +38,15 @@ def _safe_error(exc: Exception) -> str:
 
 
 async def _list_tools(cfg: dict):
+    # ANTHROPIC_API_KEY is only needed by this process itself (the exact-cost
+    # count_tokens call below) - an audited server has no legitimate use for
+    # it just to list its tool schemas, so it's stripped before spawning to
+    # avoid handing a live secret to a third-party server process.
+    spawn_env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
     params = StdioServerParameters(
         command=cfg.get("command", ""),
         args=cfg.get("args", []),
-        env={**os.environ, **cfg.get("env", {})},
+        env={**spawn_env, **cfg.get("env", {})},
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
