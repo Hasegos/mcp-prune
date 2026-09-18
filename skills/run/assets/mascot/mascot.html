@@ -109,9 +109,9 @@
 
 <div class="wrap">
   <div>
-    <h1>수금이 캐릭터 시트</h1>
-    <p class="lead">mcp-prune 리포트를 옆에서 짚어가며 설명해줄 마스코트예요. 반려견 사진을 바탕으로 그린 오리지널 2D 도트 캐릭터예요.</p>
-    <p class="note">이름 "수금이" 확정 🐾</p>
+    <h1>수금이 리포트 연동 테스트</h1>
+    <p class="lead">mcp-prune 리포트를 옆에서 짚어가며 설명해줄 마스코트 "수금이"예요. 아래 무대는 실제 리포트 데이터(REPORT_DATA)를 읽어서 재생됩니다.</p>
+    <p class="note" id="sampleNote">⚠️ 지금은 샘플 데이터로 재생 중이에요 — 이 세션엔 연결된 MCP 서버가 없어서, 실제 /mcp-prune:run 결과 대신 예시 수치를 넣었어요.</p>
   </div>
 
   <div class="stage" id="stage">
@@ -300,29 +300,76 @@ for (const b of bonus){
   sheet.appendChild(card);
 }
 
-/* --- 무대 상태 순환: idle → walk → point → talk 반복 --- */
+/**
+ * report.py의 build_rows() 출력과 같은 형태의 서버별 리포트 데이터.
+ * 실제 /mcp-prune:run 실행 시, Claude가 이 배열을 그 실행의 실제 표 값으로 치환한다.
+ * isSample=true인 동안은 화면에 "샘플 데이터" 배지를 표시한다.
+ */
+const REPORT_DATA = {
+  isSample: true,
+  servers: [
+    { name:'playwright', cost:4518, calls:0, lastUsed:'사용 안 함', roi:4518, verdict:'remove' },
+    { name:'notion', cost:2100, calls:3, lastUsed:'2일 전', roi:700, verdict:'review' },
+    { name:'github', cost:1200, calls:45, lastUsed:'오늘', roi:27, verdict:'keep' },
+  ],
+};
+
+/**
+ * 리포트 데이터로부터 무대 시퀀스(등장 → 최악 offender별 콕 짚기·설명 → 마무리)를 만든다.
+ * 서버가 없으면 이불 파묻기로, 전부 keep이면 배 까고 뒹굴기로 마무리한다.
+ * @param {{servers: Array<{name:string,cost:number,calls:number,lastUsed:string,roi:number,verdict:string}>}} data
+ * @returns {Array<{cls:string,label:string,text:string}>}
+ */
+function buildSequenceFromReport(data){
+  const servers = data.servers;
+  if (servers.length === 0){
+    return [{ cls:'pose-rest-peek', label:'지금: 조용히 대기 중', text:'지금은 걷을 빚이 하나도 없어요, MCP 서버가 없네요' }];
+  }
+  const worst = [...servers].sort((a, b) => b.roi - a.roi).slice(0, 3);
+  const seq = [
+    { cls:'pose-idle', label:'지금: 인사하는 중', text:'수금하러 왔습니다! 리포트 가져왔어요~' },
+    { cls:'pose-walk', label:'지금: 통통 등장', text:'짜잔, 표 옆으로 폴짝!' },
+  ];
+  for (const s of worst){
+    const roiTxt = s.calls === 0 ? '호출 0번' : `호출 ${s.calls}번, ROI ${s.roi.toLocaleString()}`;
+    seq.push({ cls:'pose-point', label:`지금: ${s.name} 콕 짚는 중`, text:`${s.name}, 이 서버 좀 봐주세요` });
+    seq.push({ cls:'pose-talk', label:'지금: 설명하는 중', text:`토큰 ${s.cost.toLocaleString()}개 쓰는데 ${roiTxt}, 마지막 사용 ${s.lastUsed}이에요` });
+  }
+  const allGreen = servers.every(s => s.verdict === 'keep');
+  seq.push(allGreen
+    ? { cls:'pose-rest-belly', label:'지금: 축하하는 중', text:'전부 알뜰하게 쓰고 계셨네요, 수금할 거 없어요!' }
+    : { cls:'pose-idle', label:'지금: 인사하는 중', text:'말씀드린 서버들 한번 정리해봐요' });
+  return seq;
+}
+
+/* --- 무대 상태 순환: 리포트 데이터 기반 시퀀스를 반복 재생 --- */
 const stage = document.getElementById('stage');
 const chip = document.getElementById('stateChip');
 const bubble = document.getElementById('bubble');
-const sequence = [
-  { cls:'pose-idle', label:'지금: 인사하는 중', text:'수금하러 왔습니다! 리포트 가져왔어요~' },
-  { cls:'pose-walk', label:'지금: 통통 등장', text:'짜잔, 표 옆으로 폴짝!' },
-  { cls:'pose-point', label:'지금: 콕 짚는 중', text:'요기, 이 서버 좀 봐주세요' },
-  { cls:'pose-talk', label:'지금: 설명하는 중', text:'30일간 호출 0번이었어요, 같이 정리해요' },
-];
+const sampleNote = document.getElementById('sampleNote');
+if (sampleNote) sampleNote.hidden = !REPORT_DATA.isSample;
+const sequence = buildSequenceFromReport(REPORT_DATA);
 let idx = 0;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const mascotSvg = document.getElementById('mascotSvg');
+const RIGGED_MARKUP = mascotSvg.innerHTML; // 리깅된 기본 캐릭터(귀/꼬리/앞발 애니메이션 포함)를 보존해둔다
+
 /**
  * 무대의 현재 포즈를 다음 시퀀스로 전환한다. reduced-motion 환경에서는 idle 고정.
+ * pose-rest-peek / pose-rest-belly 상태에서는 리깅 캐릭터 대신 보너스 정적 포즈로 무대를 바꾼다.
  */
 function nextPose(){
   const cur = sequence[idx];
   stage.className = 'stage ' + cur.cls;
   chip.textContent = cur.label;
+  if (cur.cls === 'pose-rest-peek') mascotSvg.innerHTML = buildBlanketPeek();
+  else if (cur.cls === 'pose-rest-belly') mascotSvg.innerHTML = buildBellyUp();
+  else if (mascotSvg.innerHTML !== RIGGED_MARKUP) mascotSvg.innerHTML = RIGGED_MARKUP;
   bubble.style.opacity = 0;
   setTimeout(() => {
-    bubble.innerHTML = `${cur.text}<small>예시 대사 — 실제 실행 시 리포트의 실제 수치로 대체됩니다</small>`;
+    const sampleTag = REPORT_DATA.isSample ? '예시 대사 — 실제 실행 시 리포트의 실제 수치로 대체됩니다' : '';
+    bubble.innerHTML = sampleTag ? `${cur.text}<small>${sampleTag}</small>` : cur.text;
     bubble.style.opacity = 1;
   }, 200);
   idx = (idx + 1) % sequence.length;
