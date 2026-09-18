@@ -68,3 +68,8 @@ kept for design review only, and is too heavy to publish on every run.
   never as a judgment call about whether the data is "worth" showing.
 - Keep the two markdown tables in the chat reply regardless — the Artifact
   is a supplement to them, never a replacement.
+- The page also renders a clickable usage-share donut chart (calls per
+  server) below the mascot stage, driven by the same `REPORT_DATA.servers`
+  — no separate step needed, it fills in automatically once you've set
+  that array. Clicking a slice or a legend row shows that server's full
+  stats (calls, cost, ROI, last used, verdict) in a detail panel.

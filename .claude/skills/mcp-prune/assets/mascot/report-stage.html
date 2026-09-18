@@ -5,18 +5,25 @@
     --bg:#FBF6EC; --surface:#FFFFFF; --text:#3A2E22; --text-dim:#7A6A57;
     --accent:#E0A233; --line:#E7D9BF;
     --coat:#F1E1C8; --patch:#9B9187; --tan:#C08A55; --ink:#35281F; --blush:#E8AFA5;
+    /* 사용 비중 도넛차트 팔레트 — dataviz 스킬 검증된 범주형 8색 중 7개, 고정 순서 */
+    --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100;
+    --series-5:#e87ba4; --series-6:#008300; --series-7:#4a3aa7; --series-other:#898781;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --bg:#231D17; --surface:#2C241D; --text:#F3E9DA; --text-dim:#C9B79E;
       --accent:#EFB94D; --line:#473A2C;
       --coat:#E6CDA6; --patch:#847969; --tan:#AE7C48; --ink:#1B140E; --blush:#D89A90;
+      --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+      --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-other:#898781;
     }
   }
   :root[data-theme="dark"]{
     --bg:#231D17; --surface:#2C241D; --text:#F3E9DA; --text-dim:#C9B79E;
     --accent:#EFB94D; --line:#473A2C;
     --coat:#E6CDA6; --patch:#847969; --tan:#AE7C48; --ink:#1B140E; --blush:#D89A90;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+    --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-other:#898781;
   }
   *{box-sizing:border-box;}
   body{background:var(--bg); color:var(--text); font-family:"Noto Sans KR",sans-serif; padding-inline:16px; padding-block:28px;}
@@ -89,6 +96,58 @@
   @media (prefers-reduced-motion:reduce){
     .mascot,.earL,.earR,.tail,.pawL,.eyes,.mouth{ animation:none !important; transform:none !important; }
   }
+
+  /* --- 사용 비중 도넛차트 --- */
+  .usage-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:20px;
+    padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+  .usage-title{font-family:"Gaegu",sans-serif; font-size:16px; margin:0;}
+  .usage-body{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  .donut-wrap{position:relative; width:120px; height:120px; flex:0 0 auto;}
+  .donut-svg{width:120px; height:120px; overflow:visible;}
+  .donut-seg{cursor:pointer; transition:opacity .15s;}
+  .donut-seg:hover, .donut-seg:focus-visible{opacity:.75;}
+  .donut-seg:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .donut-center{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; pointer-events:none; text-align:center;
+  }
+  .donut-center b{font-size:20px; color:var(--text); line-height:1.1;}
+  .donut-center span{font-size:10px; color:var(--text-dim);}
+  .donut-label{font-size:10px; fill:var(--text); font-weight:700;}
+
+  .legend{display:flex; flex-direction:column; gap:6px; flex:1 1 160px; min-width:140px;}
+  .legend-row{
+    display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text);
+    background:none; border:none; padding:3px 4px; border-radius:6px; cursor:pointer;
+    text-align:left; width:100%;
+  }
+  .legend-row:hover, .legend-row:focus-visible{background:var(--bg);}
+  .legend-row:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .legend-swatch{width:10px; height:10px; border-radius:3px; flex:0 0 auto;}
+  .legend-name{flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .legend-pct{color:var(--text-dim); font-variant-numeric:tabular-nums; flex:0 0 auto;}
+
+  .usage-detail{
+    font-size:12px; color:var(--text-dim); background:var(--bg); border:1px solid var(--line);
+    border-radius:10px; padding:8px 12px; line-height:1.5;
+  }
+  .usage-detail b{color:var(--text);}
+  .badge{
+    display:inline-block; font-size:10.5px; padding:1px 7px; border-radius:999px; margin-left:4px;
+  }
+  .badge-remove{background:#fdeceb; color:#a23b3b;}
+  .badge-review{background:#fdf3e2; color:#93630c;}
+  .badge-keep{background:#e9f7ed; color:#227a3d;}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .badge-remove{background:#3a2422; color:#e88a86;}
+    :root:not([data-theme="light"]) .badge-review{background:#3a2f1a; color:#e8bd6f;}
+    :root:not([data-theme="light"]) .badge-keep{background:#1e3324; color:#7fd39a;}
+  }
+  :root[data-theme="dark"] .badge-remove{background:#3a2422; color:#e88a86;}
+  :root[data-theme="dark"] .badge-review{background:#3a2f1a; color:#e8bd6f;}
+  :root[data-theme="dark"] .badge-keep{background:#1e3324; color:#7fd39a;}
 </style>
 
 <div class="wrap">
@@ -99,6 +158,18 @@
     <svg class="mascot-svg" id="mascotSvg" viewBox="0 0 18 16" role="img" aria-label="수금이 마스코트"></svg>
     <div class="stage-floor"></div>
     <div class="bubble" id="bubble"></div>
+  </div>
+
+  <div class="usage-card" id="usageCard" hidden>
+    <p class="usage-title">실제 사용 비중 (호출 수 기준)</p>
+    <div class="usage-body">
+      <div class="donut-wrap">
+        <svg class="donut-svg" id="donutSvg" viewBox="0 0 100 100" role="img" aria-label="서버별 실제 호출 비중 도넛차트"></svg>
+        <div class="donut-center" id="donutCenter"><b></b><span>총 호출</span></div>
+      </div>
+      <div class="legend" id="usageLegend"></div>
+    </div>
+    <div class="usage-detail" id="usageDetail"></div>
   </div>
 </div>
 
@@ -303,4 +374,131 @@ function nextPose(){
 }
 nextPose();
 if (!reduceMotion) setInterval(nextPose, 2600);
+
+/**
+ * REPORT_DATA.servers로부터 "실제 사용 비중" 도넛차트를 그린다 — 호출 수 기준.
+ * 서버가 없으면 카드를 숨긴 채로 두고, 전부 호출 0이면 도넛 대신 안내 문구만 보여준다.
+ * 세그먼트/범례를 클릭하거나 포커스 후 Enter/Space를 누르면 해당 서버 상세를 detail 패널에 표시한다.
+ * @param {Array<{name:string,cost:number,calls:number,lastUsed:string,roi:number,verdict:string}>} servers
+ */
+function renderUsageDonut(servers){
+  const card = document.getElementById('usageCard');
+  if (servers.length === 0) return; // 카드는 hidden 기본값 그대로 둔다
+
+  const total = servers.reduce((sum, s) => sum + s.calls, 0);
+  const detail = document.getElementById('usageDetail');
+  card.hidden = false;
+
+  if (total === 0){
+    document.getElementById('donutSvg').closest('.donut-wrap').hidden = true;
+    document.getElementById('usageLegend').hidden = true;
+    detail.textContent = '등록된 서버는 있는데 이번 기간엔 전부 호출 0번이라 비중을 낼 게 없어요.';
+    return;
+  }
+
+  const sorted = [...servers].sort((a, b) => b.calls - a.calls);
+  const top = sorted.slice(0, 6);
+  const rest = sorted.slice(6);
+  const segments = top.map((s, i) => ({
+    name: s.name, calls: s.calls, color: `var(--series-${i + 1})`, server: s,
+  }));
+  if (rest.length > 0){
+    segments.push({
+      name: `기타 ${rest.length}개`, calls: rest.reduce((sum, s) => sum + s.calls, 0),
+      color: 'var(--series-other)', server: null,
+    });
+  }
+
+  const r = 38, circumference = 2 * Math.PI * r;
+  const donutSvg = document.getElementById('donutSvg');
+  let cumulative = 0;
+  const circleEls = segments.map((seg) => {
+    const len = (seg.calls / total) * circumference;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'donut-seg');
+    circle.setAttribute('cx', '50'); circle.setAttribute('cy', '50'); circle.setAttribute('r', String(r));
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', seg.color);
+    circle.setAttribute('stroke-width', '14');
+    circle.setAttribute('stroke-dasharray', `${len} ${circumference - len}`);
+    circle.setAttribute('stroke-dashoffset', String(-cumulative));
+    circle.setAttribute('transform', 'rotate(-90 50 50)');
+    circle.setAttribute('tabindex', '0');
+    circle.setAttribute('role', 'button');
+    circle.setAttribute('aria-label',
+      `${seg.name}, 호출 ${seg.calls.toLocaleString()}번, ${Math.round(seg.calls / total * 100)}퍼센트`);
+    cumulative += len;
+    return circle;
+  });
+  donutSvg.innerHTML = '';
+  circleEls.forEach((c) => donutSvg.appendChild(c));
+
+  // 가장 큰 조각만 직접 라벨 — 선택적 라벨링 원칙(모든 조각에 라벨 달지 않음)
+  const biggestPct = Math.round(segments[0].calls / total * 100);
+  const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  labelText.setAttribute('class', 'donut-label');
+  labelText.setAttribute('x', '50'); labelText.setAttribute('y', '9');
+  labelText.setAttribute('text-anchor', 'middle');
+  labelText.textContent = `${biggestPct}%`;
+  donutSvg.appendChild(labelText);
+
+  document.getElementById('donutCenter').querySelector('b').textContent = total.toLocaleString();
+
+  const legend = document.getElementById('usageLegend');
+  legend.innerHTML = '';
+  segments.forEach((seg) => {
+    const row = document.createElement('button');
+    row.className = 'legend-row';
+    row.type = 'button';
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.background = seg.color;
+    const name = document.createElement('span'); // 서버명은 사용자 설정값 — textContent로만 삽입
+    name.className = 'legend-name';
+    name.textContent = seg.name;
+    const pct = document.createElement('span');
+    pct.className = 'legend-pct';
+    pct.textContent = `${Math.round(seg.calls / total * 100)}%`;
+    row.append(swatch, name, pct);
+    row.addEventListener('click', () => showUsageDetail(seg));
+    legend.appendChild(row);
+  });
+
+  circleEls.forEach((c, i) => {
+    c.addEventListener('click', () => showUsageDetail(segments[i]));
+    c.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); showUsageDetail(segments[i]); }
+    });
+  });
+
+  showUsageDetail(segments[0]);
+}
+
+/**
+ * 도넛/범례에서 선택된 세그먼트의 상세 정보를 usageDetail 패널에 렌더링한다.
+ * @param {{name:string,calls:number,server:(object|null)}} seg
+ */
+function showUsageDetail(seg){
+  const detail = document.getElementById('usageDetail');
+  detail.textContent = '';
+  if (!seg.server){
+    detail.textContent = `${seg.name} — 상위 6개 밖 서버들의 합산이에요.`;
+    return;
+  }
+  const s = seg.server;
+  const strong = document.createElement('b');
+  strong.textContent = s.name; // 서버명은 사용자 설정값 — textContent로만 삽입
+  detail.appendChild(strong);
+  const rest = document.createElement('span');
+  rest.textContent =
+    ` — 호출 ${s.calls.toLocaleString()}번 · 비용 ${s.cost.toLocaleString()} 토큰 · ROI ${s.roi.toLocaleString()} · 마지막 사용 ${s.lastUsed}`;
+  detail.appendChild(rest);
+  const badge = document.createElement('span');
+  const verdictLabel = { remove:'제거 권장', review:'검토', keep:'유지' }[s.verdict] || s.verdict;
+  badge.className = `badge badge-${s.verdict}`;
+  badge.textContent = verdictLabel;
+  detail.appendChild(badge);
+}
+
+renderUsageDonut(REPORT_DATA.servers);
 </script>
