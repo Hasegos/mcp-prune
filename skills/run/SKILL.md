@@ -59,7 +59,12 @@ kept for design review only, and is too heavy to publish on every run.
 - Never leave the file's built-in sample rows (`playwright`/`notion`/
   `github`) in a published Artifact — always overwrite them with the real
   report data first.
+- **No MCP servers configured is not a reason to skip this.** Set
+  `REPORT_DATA.servers` to `[]` and publish anyway —
+  `buildSequenceFromReport()` already renders the blanket-peek (이불 파묻기)
+  resting pose for that case, which costs nothing extra to build (it's
+  already in the file) and is the actual signal this feature exists to
+  send. Only skip the Artifact when the *publish call itself* errors —
+  never as a judgment call about whether the data is "worth" showing.
 - Keep the two markdown tables in the chat reply regardless — the Artifact
   is a supplement to them, never a replacement.
-- Skip the Artifact (tables only) if publishing fails for any reason —
-  never fail the report over it.
