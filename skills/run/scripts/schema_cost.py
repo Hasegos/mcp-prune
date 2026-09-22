@@ -19,6 +19,8 @@ from mcp.client.stdio import stdio_client
 
 CHARS_PER_TOKEN = 4  # ponytail: rough heuristic, not exact - see module docstring
 
+DEFAULT_MODEL = "claude-sonnet-5"  # shared with report.py's USD conversion, so both stay priced consistently
+
 CONNECT_TIMEOUT = 15  # seconds - some servers hang waiting on missing env/auth
 MAX_CONCURRENT_SERVERS = 5  # cap parallel subprocess spawns
 
@@ -161,7 +163,7 @@ async def _estimate_one(sem: asyncio.Semaphore, client, model: str, name: str, c
             return name, {"error": _safe_error(exc)}
 
 
-async def estimate_all(servers: dict, model: str = "claude-sonnet-5") -> dict:
+async def estimate_all(servers: dict, model: str = DEFAULT_MODEL) -> dict:
     """Estimate every configured server's tool-schema token cost.
 
     Uses the exact Anthropic count_tokens endpoint when ANTHROPIC_API_KEY is

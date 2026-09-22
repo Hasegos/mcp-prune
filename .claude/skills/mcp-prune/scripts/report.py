@@ -14,9 +14,30 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from inventory import list_servers
 from parse_logs import usage_report
-from schema_cost import estimate_all
+from schema_cost import DEFAULT_MODEL, estimate_all
 
 ROI_REVIEW_THRESHOLD = 500  # tokens spent per actual call above which we flag for review
+
+# USD per million input tokens (Anthropic base input price) - turns an
+# abstract token count into a concrete dollar figure, since a raw token
+# number doesn't register as a real cost to most people.
+# Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched 2026-09-22).
+PRICE_PER_MTOK = {
+    "claude-sonnet-5": 2.0,
+    "claude-opus-5": 5.0,
+    "claude-haiku-4-5-20251001": 1.0,
+}
+USD_PER_TOKEN = PRICE_PER_MTOK.get(DEFAULT_MODEL, 2.0) / 1_000_000
+
+
+def fmt_usd(tokens: int) -> str:
+    """Convert a token count into a USD string at the base input rate.
+
+    @param tokens: Token count to price (approximate or exact alike).
+    @returns: e.g. '$0.0090'. Always an estimate - see the report's
+        footnote for the rate and its caveats (caching, model mismatch).
+    """
+    return f"${tokens * USD_PER_TOKEN:.4f}"
 
 
 def fmt_last_used(ts) -> str:
@@ -92,14 +113,19 @@ def render_markdown(rows: list) -> str:
             verdict = "🟡 검토"
         else:
             verdict = "🟢 유지"
-        cost_str = f"{r['cost']:,} 토큰"
+        cost_str = f"{r['cost']:,} 토큰 (~{fmt_usd(r['cost'])})"
         if r.get("approx"):
             cost_str = "~" + cost_str
             any_approx = True
         lines.append(f"| {r['name']} | {cost_str} | {r['calls']} | {last_used} | {r['roi']:.0f} | {verdict} |")
 
+    lines.append("")
+    lines.append(
+        f"※ $ 환산 기준: {DEFAULT_MODEL} API 기본 input 단가 "
+        f"(${PRICE_PER_MTOK.get(DEFAULT_MODEL, 2.0):.0f}/MTok, Anthropic 공식 pricing 2026-09 기준). "
+        "세션을 새로 시작할 때마다 이 비용이 반복 청구되므로, 세션이 잦을수록 그만큼 누적됩니다."
+    )
     if any_approx:
-        lines.append("")
         lines.append("※ ~표시 = 근사치(문자수/4). 정확한 값 원하면 ANTHROPIC_API_KEY 설정 후 재실행.")
 
     if remove_cmds:
@@ -148,7 +174,7 @@ def render_tool_markdown(rows: list) -> str:
         "|---|---|---|---|---|",
     ]
     for r in rows:
-        cost_str = f"{r['cost']:,} 토큰"
+        cost_str = f"{r['cost']:,} 토큰 (~{fmt_usd(r['cost'])})"
         if r["approx"]:
             cost_str = "~" + cost_str
         lines.append(f"| {r['server']} | {r['tool']} | {cost_str} | {r['calls']} | {fmt_last_used(r['last_used'])} |")
