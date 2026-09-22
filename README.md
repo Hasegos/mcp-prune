@@ -59,12 +59,6 @@ python skills/run/scripts/report.py --days 30
 Output is two markdown tables: a per-server ranking with removal
 recommendations, and a per-tool cost/usage breakdown underneath it.
 
-## Self-check
-
-```
-python skills/run/scripts/test_mcp_prune.py
-```
-
 ## Passive nudge
 
 Installing the plugin also registers a `SessionStart` hook
