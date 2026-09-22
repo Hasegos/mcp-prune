@@ -54,6 +54,15 @@ recommendations, and a per-tool cost/usage breakdown underneath it.
 python skills/run/scripts/test_mcp_prune.py
 ```
 
+## Passive nudge
+
+Installing the plugin also registers a `SessionStart` hook
+(`hooks/session_nudge.py`) that runs a fast, local-only check (no server
+spawning, no network) at the start of every session. It stays silent
+unless it finds a configured server with 0 calls in the last 30 days, in
+which case it prints one line pointing you at `/mcp-prune:run` — so you
+don't have to remember this plugin exists to benefit from it.
+
 ## How it works
 
 See `skills/run/scripts/`:
