@@ -43,7 +43,7 @@
   }
   .bubble small{display:block; font-family:"Noto Sans KR",sans-serif; font-size:11px; color:var(--text-dim); margin-top:4px;}
 
-  /* --- 캐릭터 리그: 각 부위를 개별 그룹으로 분리해 상태별로 독립 애니메이션 --- */
+  /* --- Character rig: each part is its own group so it can animate independently per state --- */
   .mascot{ transform-box:fill-box; }
   .earL,.earR,.tail,.pawL,.eyes{ transform-box:fill-box; }
   .earL{ transform-origin:85% 100%; }
@@ -143,15 +143,15 @@
 
 <script>
 /**
- * 팔레트 문자 → CSS 변수 매핑.
+ * Palette letter -> CSS variable mapping.
  */
 const PAL = { c:'var(--coat)', g:'var(--patch)', t:'var(--tan)', k:'var(--ink)', p:'var(--blush)' };
 
 /**
- * run-length 형식의 한 행(row)을 SVG <rect> 마크업으로 변환한다.
- * @param {number} y - 행의 y좌표(그리드 단위)
- * @param {Array<[number,string]>} runs - [칸 수, 팔레트 문자] 쌍의 배열. '.'은 빈 칸.
- * @returns {string} 해당 행의 rect 마크업 문자열
+ * Convert one run-length-encoded row into SVG <rect> markup.
+ * @param {number} y - The row's y coordinate (grid units).
+ * @param {Array<[number,string]>} runs - [cell count, palette letter] pairs. '.' is empty.
+ * @returns {string} That row's rect markup.
  */
 function rowRects(y, runs){
   let x = 0, out = '';
@@ -163,16 +163,16 @@ function rowRects(y, runs){
 }
 
 /**
- * 여러 행(run-length 배열)을 이어붙여 하나의 SVG 마크업 블록으로 변환한다.
- * @param {number} startY - 첫 행의 y좌표
- * @param {Array<Array<[number,string]>>} rows - 행 배열
- * @returns {string} 합쳐진 rect 마크업 문자열
+ * Join several run-length-encoded rows into one SVG markup block.
+ * @param {number} startY - The first row's y coordinate.
+ * @param {Array<Array<[number,string]>>} rows - The rows.
+ * @returns {string} Concatenated rect markup.
  */
 function block(startY, rows){
   return rows.map((r, i) => rowRects(startY + i, r)).join('');
 }
 
-// 얼굴/몸통(정적 파트) — y=3부터 시작
+// Face/body (static part) - starts at y=3
 const BODY_ROWS = [
   [[6,'.'],[6,'c'],[6,'.']],
   [[4,'.'],[10,'c'],[4,'.']],
@@ -189,7 +189,7 @@ const BODY_ROWS = [
   [[3,'.'],[2,'.'],[8,'c'],[2,'t'],[3,'.']],
 ];
 
-// 귀(로컬 6x6 그리드, 왼쪽 기준 — 오른쪽은 좌우반전으로 재사용)
+// Ear (local 6x6 grid, left side - the right ear reuses this mirrored)
 const EAR_ROWS = [
   [[1,'.'],[3,'g'],[2,'.']],
   [[4,'g'],[2,'.']],
@@ -200,10 +200,12 @@ const EAR_ROWS = [
 ];
 
 /**
- * 수금이 한 마리 분량의 SVG 내용을 조립한다. 파트별로 <g> 로 감싸 CSS 애니메이션 훅을 제공한다.
- * 위치(translate/scale)는 바깥쪽 <g>의 SVG 속성으로, 회전 애니메이션은 안쪽 <g>의 CSS 클래스로 분리한다 —
- * 같은 요소에 CSS transform과 SVG transform 속성을 동시에 걸면 CSS가 속성을 완전히 덮어써 버리기 때문.
- * @returns {string} <svg> 내부에 삽입할 마크업
+ * Assemble one full Sugeumi (수금이) as SVG markup, each part wrapped in its
+ * own <g> as a CSS animation hook. Position (translate/scale) lives on the
+ * outer <g>'s SVG attribute; rotation animation lives on the inner <g>'s CSS
+ * class - because setting a CSS transform on an element that also has an SVG
+ * transform attribute makes CSS silently overwrite the attribute entirely.
+ * @returns {string} Markup to insert inside the <svg>.
  */
 function buildMascot(){
   const body = block(3, BODY_ROWS);
@@ -228,7 +230,7 @@ function buildMascot(){
 
 document.getElementById('mascotSvg').innerHTML = buildMascot();
 
-/* --- 포즈 시트: 정적 보너스 포즈 2종 + 기본 리그 포즈 4종 썸네일 --- */
+/* --- Pose sheet: 2 static bonus poses + thumbnails of the 4 base rig poses --- */
 const sheet = document.getElementById('sheet');
 const poses = [
   { name:'앉아있기', cls:'pose-idle', desc:'가만히 있어도 숨쉬듯 꼬물꼬물' },
@@ -247,8 +249,9 @@ for (const p of poses){
 }
 
 /**
- * 배 까고 뒹굴기(belly-up) 정적 포즈를 그린다. 사진 속 "배 보이고 눕기" 포즈에서 따왔다.
- * @returns {string} <svg> 내부 마크업
+ * Draw the static belly-up pose, taken from the "lying on its back" pose in
+ * the reference photos.
+ * @returns {string} Markup for inside the <svg>.
  */
 function buildBellyUp(){
   const rows = [
@@ -269,8 +272,9 @@ function buildBellyUp(){
 }
 
 /**
- * 이불 파묻기(blanket-peek) 정적 포즈를 그린다. 사진 속 이불 밖으로 코만 내민 포즈에서 따왔다.
- * @returns {string} <svg> 내부 마크업
+ * Draw the static blanket-peek pose, taken from the "just the nose poking
+ * out of the blanket" pose in the reference photos.
+ * @returns {string} Markup for inside the <svg>.
  */
 function buildBlanketPeek(){
   const blanket = `<rect x="1" y="9" width="16" height="6" rx="1" fill="var(--accent)" opacity=".85"/>`
@@ -301,9 +305,11 @@ for (const b of bonus){
 }
 
 /**
- * report.py의 build_rows() 출력과 같은 형태의 서버별 리포트 데이터.
- * 실제 /mcp-prune:run 실행 시, Claude가 이 배열을 그 실행의 실제 표 값으로 치환한다.
- * isSample=true인 동안은 화면에 "샘플 데이터" 배지를 표시한다.
+ * Per-server report data shaped like report.py's build_rows() output.
+ * This file is the design-review character sheet, not the runtime
+ * template (that's report-stage.html) - the sample rows below stay as
+ * sample rows here on purpose. While isSample is true, the page shows a
+ * "sample data" badge.
  */
 const REPORT_DATA = {
   isSample: true,
@@ -315,8 +321,9 @@ const REPORT_DATA = {
 };
 
 /**
- * 리포트 데이터로부터 무대 시퀀스(등장 → 최악 offender별 콕 짚기·설명 → 마무리)를 만든다.
- * 서버가 없으면 이불 파묻기로, 전부 keep이면 배 까고 뒹굴기로 마무리한다.
+ * Build the stage sequence from report data: entrance -> point-and-explain
+ * per worst offender -> closing beat. No servers closes on blanket-peek;
+ * all-keep closes on belly-up.
  * @param {{servers: Array<{name:string,cost:number,calls:number,lastUsed:string,roi:number,verdict:string}>}} data
  * @returns {Array<{cls:string,label:string,text:string}>}
  */
@@ -342,7 +349,7 @@ function buildSequenceFromReport(data){
   return seq;
 }
 
-/* --- 무대 상태 순환: 리포트 데이터 기반 시퀀스를 반복 재생 --- */
+/* --- Stage state cycle: loop through the report-data-driven sequence --- */
 const stage = document.getElementById('stage');
 const chip = document.getElementById('stateChip');
 const bubble = document.getElementById('bubble');
@@ -353,11 +360,12 @@ let idx = 0;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const mascotSvg = document.getElementById('mascotSvg');
-const RIGGED_MARKUP = mascotSvg.innerHTML; // 리깅된 기본 캐릭터(귀/꼬리/앞발 애니메이션 포함)를 보존해둔다
+const RIGGED_MARKUP = mascotSvg.innerHTML; // keep the rigged base character (ears/tail/paw animation) around
 
 /**
- * 무대의 현재 포즈를 다음 시퀀스로 전환한다. reduced-motion 환경에서는 idle 고정.
- * pose-rest-peek / pose-rest-belly 상태에서는 리깅 캐릭터 대신 보너스 정적 포즈로 무대를 바꾼다.
+ * Advance the stage to the next pose in the sequence. Stays on idle under
+ * prefers-reduced-motion. In the pose-rest-peek / pose-rest-belly states,
+ * swaps in a bonus static pose instead of the rigged character.
  */
 function nextPose(){
   const cur = sequence[idx];

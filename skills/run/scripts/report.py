@@ -13,14 +13,19 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, str(Path(__file__).parent))
 
 from inventory import list_servers
-from parse_logs import count_calls, count_calls_by_tool
+from parse_logs import usage_report
 from schema_cost import estimate_all
 
 ROI_REVIEW_THRESHOLD = 500  # tokens spent per actual call above which we flag for review
 
 
 def fmt_last_used(ts) -> str:
-    """Epoch seconds -> '3일 전' / '오늘' / '사용 안 함'."""
+    """Format an epoch-seconds timestamp as a relative Korean label.
+
+    @param ts: Epoch seconds, or a falsy value if the server/tool was
+        never called in the audit window.
+    @returns: '3일 전' / '오늘' / '사용 안 함'.
+    """
     if not ts:
         return "사용 안 함"
     days = int((time.time() - ts) // 86400)
@@ -30,6 +35,14 @@ def fmt_last_used(ts) -> str:
 
 
 def build_rows(servers: dict, usage: dict, costs: dict) -> list:
+    """Join server list, usage counts, and schema costs into rankable rows.
+
+    @param servers: `list_servers()` output.
+    @param usage: Per-server usage, as returned by `usage_report()`'s first element.
+    @param costs: `estimate_all()` output.
+    @returns: Rows sorted worst-ROI-first (unmeasurable servers last), each
+        {"name", "cost", "calls", "roi", "note", "approx", "last_used"}.
+    """
     rows = []
     for name in servers:
         info = usage.get(name, {})
@@ -54,6 +67,13 @@ def build_rows(servers: dict, usage: dict, costs: dict) -> list:
 
 
 def render_markdown(rows: list) -> str:
+    """Render the per-server ranking table (and removal commands) as markdown.
+
+    @param rows: `build_rows()` output.
+    @returns: A markdown table, plus a fenced `claude mcp remove` block for
+        any 0-call server and an approximation footnote when any cost was
+        estimated rather than measured exactly.
+    """
     lines = [
         "| 서버 | 세션당 비용 | 호출횟수 | 마지막 사용 | ROI(비용/호출) | 권고 |",
         "|---|---|---|---|---|---|",
@@ -93,7 +113,12 @@ def render_markdown(rows: list) -> str:
 
 
 def build_tool_rows(costs: dict, tool_usage: dict) -> list:
-    """Per-tool breakdown across all servers, not just the server rollup."""
+    """Build the per-tool breakdown across all servers, not just the server rollup.
+
+    @param costs: `estimate_all()` output (its per-server "tools" list supplies cost).
+    @param tool_usage: Per-tool usage, as returned by `usage_report()`'s second element.
+    @returns: Rows sorted by server, then by cost descending within each server.
+    """
     rows = []
     for server, cost_info in costs.items():
         for t in cost_info.get("tools", []):
@@ -108,6 +133,12 @@ def build_tool_rows(costs: dict, tool_usage: dict) -> list:
 
 
 def render_tool_markdown(rows: list) -> str:
+    """Render the per-tool breakdown table as markdown.
+
+    @param rows: `build_tool_rows()` output.
+    @returns: A markdown table under a "### 도구별 상세" heading, or "" when
+        there are no tool rows to show (no server had a measured schema).
+    """
     if not rows:
         return ""
     lines = [
@@ -125,6 +156,11 @@ def render_tool_markdown(rows: list) -> str:
 
 
 def main():
+    """CLI entry point: print the per-server and per-tool audit tables.
+
+    @returns: None. Prints the markdown report(s) to stdout, or a
+        no-servers-configured message if `list_servers()` finds nothing.
+    """
     parser = argparse.ArgumentParser(description="Audit MCP servers by cost vs actual usage.")
     parser.add_argument("--days", type=int, default=30, help="session log window in days")
     args = parser.parse_args()
@@ -134,8 +170,7 @@ def main():
         print("설정된 MCP 서버가 없습니다 (.mcp.json / ~/.claude.json 확인).")
         return
 
-    usage = count_calls(days=args.days)
-    tool_usage = count_calls_by_tool(days=args.days)
+    usage, tool_usage = usage_report(days=args.days)  # single log scan for both views
     costs = asyncio.run(estimate_all(servers))
 
     rows = build_rows(servers, usage, costs)

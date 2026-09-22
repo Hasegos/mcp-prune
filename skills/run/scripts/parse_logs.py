@@ -12,9 +12,11 @@ SESSIONS_ROOT = Path.home() / ".claude" / "projects"
 
 def _event_time(event: dict):
     """Parse a session event's own ISO 8601 `timestamp` field (e.g.
-    "2026-09-18T00:49:24.052Z") into epoch seconds. Returns None when the
-    field is missing or malformed - the caller falls back to the
-    containing file's mtime in that case.
+    "2026-09-18T00:49:24.052Z") into epoch seconds.
+
+    @param event: One parsed JSONL session event.
+    @returns: Epoch seconds, or None if the field is missing/malformed -
+        the caller then falls back to the containing file's mtime.
     """
     ts = event.get("timestamp")
     if not isinstance(ts, str):
@@ -26,7 +28,11 @@ def _event_time(event: dict):
 
 
 def _tool_use_names(event: dict):
-    """Yield each tool_use block's name from one parsed session event."""
+    """Yield each tool_use block's name from one parsed session event.
+
+    @param event: One parsed JSONL session event.
+    @returns: Generator of tool names (e.g. "mcp__notion__search").
+    """
     message = event.get("message")
     if not isinstance(message, dict):
         return
@@ -41,7 +47,11 @@ def _tool_use_names(event: dict):
 
 
 def server_of(tool_name: str):
-    """'mcp__notion__search' -> 'notion'. Non-MCP tools return None."""
+    """'mcp__notion__search' -> 'notion'.
+
+    @param tool_name: A full tool name as it appears in a tool_use block.
+    @returns: The server name, or None for a non-MCP tool.
+    """
     if not tool_name.startswith("mcp__"):
         return None
     parts = tool_name.split("__")
@@ -49,7 +59,12 @@ def server_of(tool_name: str):
 
 
 def bare_tool_name(tool_name: str):
-    """'mcp__notion__search' -> 'search' (strips the 'mcp__<server>__' prefix)."""
+    """'mcp__notion__search' -> 'search' (strips the 'mcp__<server>__' prefix).
+
+    @param tool_name: A full tool name as it appears in a tool_use block.
+    @returns: The tool name with its server prefix stripped, or None for a
+        non-MCP tool.
+    """
     server = server_of(tool_name)
     if server is None:
         return None
@@ -57,9 +72,7 @@ def bare_tool_name(tool_name: str):
 
 
 def _scan(days: int) -> tuple[Counter, dict]:
-    """One pass over recent session logs. Returns (calls_per_full_tool_name,
-    last_used_epoch_per_full_tool_name). Both count_calls() and
-    count_calls_by_tool() derive from this so logs are only read once.
+    """One pass over recent session logs.
 
     Each tool call is filtered and timestamped by its own event
     `timestamp` field, not the containing file's mtime - a session file
@@ -67,6 +80,12 @@ def _scan(days: int) -> tuple[Counter, dict]:
     call inside it (including ones from well outside the --days window)
     as having just happened, since mtime reflects the file's last write,
     not any individual event's time.
+
+    @param days: Only count events within this many days of now.
+    @returns: (calls_per_full_tool_name, last_used_epoch_per_full_tool_name).
+        `usage_report()` derives both count_calls()- and
+        count_calls_by_tool()-shaped results from a single call to this,
+        so logs are only read once per report run.
     """
     cutoff = time.time() - days * 86400
     calls = Counter()
@@ -104,9 +123,13 @@ def _scan(days: int) -> tuple[Counter, dict]:
     return calls, last_used
 
 
-def count_calls(days: int = 30) -> dict:
-    """Return {server_name: {"calls": int, "last_used": float|None}}."""
-    raw_calls, raw_last = _scan(days)
+def _by_server(raw_calls: Counter, raw_last: dict) -> dict:
+    """Roll up an already-scanned (raw_calls, raw_last) pair by server.
+
+    @param raw_calls: `_scan()`'s first return value.
+    @param raw_last: `_scan()`'s second return value.
+    @returns: {server_name: {"calls": int, "last_used": float|None}}.
+    """
     calls = Counter()
     last_used = defaultdict(float)
     for tool_name, n in raw_calls.items():
@@ -119,9 +142,13 @@ def count_calls(days: int = 30) -> dict:
     }
 
 
-def count_calls_by_tool(days: int = 30) -> dict:
-    """Return {(server, bare_tool_name): {"calls": int, "last_used": float|None}}."""
-    raw_calls, raw_last = _scan(days)
+def _by_tool(raw_calls: Counter, raw_last: dict) -> dict:
+    """Reshape an already-scanned (raw_calls, raw_last) pair by (server, tool).
+
+    @param raw_calls: `_scan()`'s first return value.
+    @param raw_last: `_scan()`'s second return value.
+    @returns: {(server, bare_tool_name): {"calls": int, "last_used": float|None}}.
+    """
     return {
         (server_of(tool_name), bare_tool_name(tool_name)): {
             "calls": n,
@@ -129,6 +156,41 @@ def count_calls_by_tool(days: int = 30) -> dict:
         }
         for tool_name, n in raw_calls.items()
     }
+
+
+def usage_report(days: int = 30) -> tuple[dict, dict]:
+    """Scan session logs once and return both usage views report.py needs.
+
+    @param days: Only count events within this many days of now.
+    @returns: (by_server, by_tool) - see `_by_server()` / `_by_tool()` for
+        their shapes. Prefer this over calling count_calls() and
+        count_calls_by_tool() separately, which would scan the same logs
+        twice.
+    """
+    raw_calls, raw_last = _scan(days)
+    return _by_server(raw_calls, raw_last), _by_tool(raw_calls, raw_last)
+
+
+def count_calls(days: int = 30) -> dict:
+    """Return {server_name: {"calls": int, "last_used": float|None}}.
+
+    @param days: Only count events within this many days of now.
+    @returns: Per-server usage. Standalone convenience wrapper around
+        `usage_report()` - if you also need the per-tool view, call
+        `usage_report()` directly instead of this and count_calls_by_tool()
+        together, to scan logs only once.
+    """
+    return usage_report(days)[0]
+
+
+def count_calls_by_tool(days: int = 30) -> dict:
+    """Return {(server, bare_tool_name): {"calls": int, "last_used": float|None}}.
+
+    @param days: Only count events within this many days of now.
+    @returns: Per-tool usage. Standalone convenience wrapper - see
+        `count_calls()` docstring for the double-scan caveat.
+    """
+    return usage_report(days)[1]
 
 
 if __name__ == "__main__":

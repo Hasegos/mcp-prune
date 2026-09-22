@@ -8,6 +8,12 @@ import json
 from pathlib import Path
 
 def _iter_config_paths():
+    """Yield every config file that might declare MCP servers.
+
+    @returns: Generator of paths - `.mcp.json` walked up from the current
+        working directory, then `~/.claude.json` and
+        `~/.claude/settings.json`, each only if it exists.
+    """
     cwd = Path.cwd()
     for parent in [cwd, *cwd.parents]:
         candidate = parent / ".mcp.json"
@@ -29,6 +35,13 @@ def _find_mcp_servers(obj, source, out, cwd):
     happen to share the same ~/.claude.json don't leak into this project's
     audit (and don't get spawned by schema_cost.py under this project's
     invocation).
+
+    @param obj: The current node while walking a parsed config file.
+    @param source: The config file path (recorded on each server as "_source").
+    @param out: Accumulator dict mutated in place - first server with a
+        given name wins.
+    @param cwd: The current project's working directory, as a string.
+    @returns: None (mutates `out`).
     """
     if isinstance(obj, dict):
         servers = obj.get("mcpServers")
@@ -49,7 +62,10 @@ def _find_mcp_servers(obj, source, out, cwd):
 
 
 def list_servers() -> dict:
-    """Return {server_name: {command, args, env, _source}}."""
+    """Discover every MCP server configured for the current project.
+
+    @returns: {server_name: {command, args, env, _source}}.
+    """
     servers = {}
     cwd = str(Path.cwd())
     for path in _iter_config_paths():

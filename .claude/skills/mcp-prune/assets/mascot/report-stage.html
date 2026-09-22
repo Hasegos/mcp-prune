@@ -48,7 +48,7 @@
   }
   .bubble small{display:block; font-family:"Noto Sans KR",sans-serif; font-size:11px; color:var(--text-dim); margin-top:4px;}
 
-  /* --- 캐릭터 리그: 각 부위를 개별 그룹으로 분리해 상태별로 독립 애니메이션 --- */
+  /* --- Character rig: each part is its own group so it can animate independently per state --- */
   .mascot{ transform-box:fill-box; }
   .earL,.earR,.tail,.pawL,.eyes{ transform-box:fill-box; }
   .earL{ transform-origin:85% 100%; }
@@ -97,7 +97,7 @@
     .mascot,.earL,.earR,.tail,.pawL,.eyes,.mouth{ animation:none !important; transform:none !important; }
   }
 
-  /* --- 사용 비중 도넛차트 --- */
+  /* --- Usage-share donut chart --- */
   .usage-card{
     background:var(--surface); border:1px solid var(--line); border-radius:20px;
     padding:18px; display:flex; flex-direction:column; gap:12px;
@@ -175,15 +175,15 @@
 
 <script>
 /**
- * 팔레트 문자 → CSS 변수 매핑.
+ * Palette letter -> CSS variable mapping.
  */
 const PAL = { c:'var(--coat)', g:'var(--patch)', t:'var(--tan)', k:'var(--ink)', p:'var(--blush)' };
 
 /**
- * run-length 형식의 한 행(row)을 SVG <rect> 마크업으로 변환한다.
- * @param {number} y - 행의 y좌표(그리드 단위)
- * @param {Array<[number,string]>} runs - [칸 수, 팔레트 문자] 쌍의 배열. '.'은 빈 칸.
- * @returns {string} 해당 행의 rect 마크업 문자열
+ * Convert one run-length-encoded row into SVG <rect> markup.
+ * @param {number} y - The row's y coordinate (grid units).
+ * @param {Array<[number,string]>} runs - [cell count, palette letter] pairs. '.' is empty.
+ * @returns {string} That row's rect markup.
  */
 function rowRects(y, runs){
   let x = 0, out = '';
@@ -195,16 +195,16 @@ function rowRects(y, runs){
 }
 
 /**
- * 여러 행(run-length 배열)을 이어붙여 하나의 SVG 마크업 블록으로 변환한다.
- * @param {number} startY - 첫 행의 y좌표
- * @param {Array<Array<[number,string]>>} rows - 행 배열
- * @returns {string} 합쳐진 rect 마크업 문자열
+ * Join several run-length-encoded rows into one SVG markup block.
+ * @param {number} startY - The first row's y coordinate.
+ * @param {Array<Array<[number,string]>>} rows - The rows.
+ * @returns {string} Concatenated rect markup.
  */
 function block(startY, rows){
   return rows.map((r, i) => rowRects(startY + i, r)).join('');
 }
 
-// 얼굴/몸통(정적 파트) — y=3부터 시작
+// Face/body (static part) - starts at y=3
 const BODY_ROWS = [
   [[6,'.'],[6,'c'],[6,'.']],
   [[4,'.'],[10,'c'],[4,'.']],
@@ -221,7 +221,7 @@ const BODY_ROWS = [
   [[3,'.'],[2,'.'],[8,'c'],[2,'t'],[3,'.']],
 ];
 
-// 귀(로컬 6x6 그리드, 왼쪽 기준 — 오른쪽은 좌우반전으로 재사용)
+// Ear (local 6x6 grid, left side - the right ear reuses this mirrored)
 const EAR_ROWS = [
   [[1,'.'],[3,'g'],[2,'.']],
   [[4,'g'],[2,'.']],
@@ -232,10 +232,12 @@ const EAR_ROWS = [
 ];
 
 /**
- * 수금이 한 마리 분량의 SVG 내용을 조립한다. 파트별로 <g> 로 감싸 CSS 애니메이션 훅을 제공한다.
- * 위치(translate/scale)는 바깥쪽 <g>의 SVG 속성으로, 회전 애니메이션은 안쪽 <g>의 CSS 클래스로 분리한다 —
- * 같은 요소에 CSS transform과 SVG transform 속성을 동시에 걸면 CSS가 속성을 완전히 덮어써 버리기 때문.
- * @returns {string} <svg> 내부에 삽입할 마크업
+ * Assemble one full Sugeumi (수금이) as SVG markup, each part wrapped in its
+ * own <g> as a CSS animation hook. Position (translate/scale) lives on the
+ * outer <g>'s SVG attribute; rotation animation lives on the inner <g>'s CSS
+ * class - because setting a CSS transform on an element that also has an SVG
+ * transform attribute makes CSS silently overwrite the attribute entirely.
+ * @returns {string} Markup to insert inside the <svg>.
  */
 function buildMascot(){
   const body = block(3, BODY_ROWS);
@@ -259,8 +261,9 @@ function buildMascot(){
 }
 
 /**
- * 배 까고 뒹굴기(belly-up) 정적 포즈를 그린다 — 전부 🟢 유지 판정일 때 마무리로 쓴다.
- * @returns {string} <svg> 내부 마크업
+ * Draw the static belly-up pose - used as the closing beat when every
+ * server verdicts 🟢 keep.
+ * @returns {string} Markup for inside the <svg>.
  */
 function buildBellyUp(){
   const rows = [
@@ -281,8 +284,8 @@ function buildBellyUp(){
 }
 
 /**
- * 이불 파묻기(blanket-peek) 정적 포즈를 그린다 — 설정된 MCP 서버가 하나도 없을 때 쓴다.
- * @returns {string} <svg> 내부 마크업
+ * Draw the static blanket-peek pose - used when no MCP servers are configured.
+ * @returns {string} Markup for inside the <svg>.
  */
 function buildBlanketPeek(){
   const blanket = `<rect x="1" y="9" width="16" height="6" rx="1" fill="var(--accent)" opacity=".85"/>`
@@ -303,9 +306,9 @@ function buildBlanketPeek(){
 document.getElementById('mascotSvg').innerHTML = buildMascot();
 
 /**
- * report.py의 build_rows() 출력을 그대로 옮겨 담는 자리.
- * 이 스킬을 실행하는 Claude가 이번 /mcp-prune:run 결과의 실제 값으로 매번 교체한다.
- * 절대 샘플 수치를 남겨둔 채로 발행하지 않는다.
+ * Where report.py's build_rows() output lands verbatim.
+ * The Claude running this skill overwrites this with this run's real
+ * values every time - never publish with the sample numbers left in.
  */
 const REPORT_DATA = {
   servers: [
@@ -316,8 +319,9 @@ const REPORT_DATA = {
 };
 
 /**
- * 숫자를 안전하게 포맷한다. null/undefined(연결 실패 등으로 비용을 못 잰 서버)는
- * "측정불가"로 표시해 toLocaleString() 호출로 인한 TypeError를 막는다.
+ * Format a number safely. null/undefined (a server whose cost couldn't be
+ * measured, e.g. a failed connection) renders as "측정불가" instead of
+ * throwing a TypeError from calling toLocaleString() on it.
  * @param {number|null|undefined} n
  * @returns {string}
  */
@@ -326,11 +330,12 @@ function fmtNum(n){
 }
 
 /**
- * 리포트 데이터로부터 무대 시퀀스(등장 → 최악 offender별 콕 짚기·설명 → 마무리)를 만든다.
- * 서버가 없으면 이불 파묻기로, 전부 keep이면 배 까고 뒹굴기로 마무리한다.
- * cost/roi를 못 잰(연결 실패) 서버는 ROI로 순위를 매길 수 없으므로 "최악 offender"
- * 선정에서는 제외한다 — SKILL.md 지침상 애초에 REPORT_DATA에 넣지 않는 게 정석이지만,
- * 혹시 섞여 들어와도 여기서 걸러 페이지가 죽지 않게 한다.
+ * Build the stage sequence from report data: entrance -> point-and-explain
+ * per worst offender -> closing beat. No servers closes on blanket-peek;
+ * all-keep closes on belly-up. A server whose cost/roi couldn't be measured
+ * (failed connection) has no ROI to rank by, so it's excluded from "worst
+ * offender" selection - per SKILL.md it shouldn't be in REPORT_DATA at all,
+ * but this filter keeps the page from breaking even if one slips in anyway.
  * @param {{servers: Array<{name:string,cost:(number|null),calls:number,lastUsed:string,roi:(number|null),verdict:string}>}} data
  * @returns {Array<{cls:string,label:string,text:string}>}
  */
@@ -357,7 +362,7 @@ function buildSequenceFromReport(data){
   return seq;
 }
 
-/* --- 무대 상태 순환: 리포트 데이터 기반 시퀀스를 반복 재생 --- */
+/* --- Stage state cycle: loop through the report-data-driven sequence --- */
 const stage = document.getElementById('stage');
 const chip = document.getElementById('stateChip');
 const bubble = document.getElementById('bubble');
@@ -366,11 +371,12 @@ let idx = 0;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const mascotSvg = document.getElementById('mascotSvg');
-const RIGGED_MARKUP = mascotSvg.innerHTML; // 리깅된 기본 캐릭터(귀/꼬리/앞발 애니메이션 포함)를 보존해둔다
+const RIGGED_MARKUP = mascotSvg.innerHTML; // keep the rigged base character (ears/tail/paw animation) around
 
 /**
- * 무대의 현재 포즈를 다음 시퀀스로 전환한다. reduced-motion 환경에서는 첫 포즈에 고정.
- * pose-rest-peek / pose-rest-belly 상태에서는 리깅 캐릭터 대신 보너스 정적 포즈로 무대를 바꾼다.
+ * Advance the stage to the next pose in the sequence. Stays on the first
+ * pose under prefers-reduced-motion. In the pose-rest-peek / pose-rest-belly
+ * states, swaps in a bonus static pose instead of the rigged character.
  */
 function nextPose(){
   const cur = sequence[idx];
@@ -390,14 +396,16 @@ nextPose();
 if (!reduceMotion) setInterval(nextPose, 2600);
 
 /**
- * REPORT_DATA.servers로부터 "실제 사용 비중" 도넛차트를 그린다 — 호출 수 기준.
- * 서버가 없으면 카드를 숨긴 채로 두고, 전부 호출 0이면 도넛 대신 안내 문구만 보여준다.
- * 세그먼트/범례를 클릭하거나 포커스 후 Enter/Space를 누르면 해당 서버 상세를 detail 패널에 표시한다.
+ * Draw the "actual usage share" donut chart from REPORT_DATA.servers, by
+ * call count. Leaves the card hidden when there are no servers, and shows
+ * a message instead of the donut when every server has 0 calls. Clicking a
+ * segment or a legend row (or focusing one and pressing Enter/Space) shows
+ * that server's detail in the detail panel.
  * @param {Array<{name:string,cost:number,calls:number,lastUsed:string,roi:number,verdict:string}>} servers
  */
 function renderUsageDonut(servers){
   const card = document.getElementById('usageCard');
-  if (servers.length === 0) return; // 카드는 hidden 기본값 그대로 둔다
+  if (servers.length === 0) return; // leave the card at its default `hidden`
 
   const total = servers.reduce((sum, s) => sum + s.calls, 0);
   const detail = document.getElementById('usageDetail');
@@ -456,7 +464,7 @@ function renderUsageDonut(servers){
     const swatch = document.createElement('span');
     swatch.className = 'legend-swatch';
     swatch.style.background = seg.color;
-    const name = document.createElement('span'); // 서버명은 사용자 설정값 — textContent로만 삽입
+    const name = document.createElement('span'); // server name is user config - insert via textContent only
     name.className = 'legend-name';
     name.textContent = seg.name;
     row.append(swatch, name);
@@ -467,9 +475,10 @@ function renderUsageDonut(servers){
   const center = document.getElementById('donutCenter');
 
   /**
-   * 도넛 조각 또는 범례 행 선택 시, 그 조각의 퍼센트만 중앙에 드러내고
-   * 상세 패널을 채운다 — 선택 전에는 어떤 수치도 보이지 않는다.
-   * @param {number} i - segments 배열 안에서의 인덱스
+   * On selecting a donut segment or legend row, reveal only that segment's
+   * percentage in the center and fill in the detail panel - no numbers are
+   * shown anywhere before a selection is made.
+   * @param {number} i - Index into the `segments` array.
    */
   function selectSegment(i){
     const seg = segments[i];
@@ -482,7 +491,7 @@ function renderUsageDonut(servers){
     center.innerHTML = '';
     const b = document.createElement('b');
     b.textContent = `${pct}%`;
-    const name = document.createElement('span'); // 서버명은 사용자 설정값 — textContent로만 삽입
+    const name = document.createElement('span'); // server name is user config - insert via textContent only
     name.textContent = seg.name;
     center.append(b, name);
 
