@@ -12,6 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from backup import backup as backup_server
 from inventory import list_servers
 from parse_logs import usage_report
 from schema_cost import DEFAULT_MODEL, estimate_all
@@ -87,10 +88,15 @@ def build_rows(servers: dict, usage: dict, costs: dict) -> list:
     return rows
 
 
-def render_markdown(rows: list) -> str:
+def render_markdown(rows: list, servers: dict) -> str:
     """Render the per-server ranking table (and removal commands) as markdown.
 
+    Every 0-call server gets its config backed up (see backup.py) before its
+    removal command is printed, so the removal it's about to recommend is
+    reversible with one `restore.py` command rather than a one-way decision.
+
     @param rows: `build_rows()` output.
+    @param servers: `list_servers()` output - the raw configs to back up.
     @returns: A markdown table, plus a fenced `claude mcp remove` block for
         any 0-call server and an approximation footnote when any cost was
         estimated rather than measured exactly.
@@ -109,6 +115,7 @@ def render_markdown(rows: list) -> str:
         if r["calls"] == 0:
             verdict = "🔴 제거 권장"
             remove_cmds.append(r["name"])
+            backup_server(r["name"], servers.get(r["name"], {}))
         elif r["roi"] > ROI_REVIEW_THRESHOLD:
             verdict = "🟡 검토"
         else:
@@ -130,11 +137,13 @@ def render_markdown(rows: list) -> str:
 
     if remove_cmds:
         lines.append("")
-        lines.append("제거 명령어:")
+        lines.append("제거 명령어 (설정은 자동 백업되어 있어 되돌릴 수 있습니다):")
         lines.append("```")
         for name in remove_cmds:
             lines.append(f"claude mcp remove {name} -s user")
         lines.append("```")
+        restore_path = Path(__file__).parent / "restore.py"
+        lines.append(f"되돌리려면: `python {restore_path} <서버명>`")
     return "\n".join(lines)
 
 
@@ -200,7 +209,7 @@ def main():
     costs = asyncio.run(estimate_all(servers))
 
     rows = build_rows(servers, usage, costs)
-    print(render_markdown(rows))
+    print(render_markdown(rows, servers))
 
     tool_rows = build_tool_rows(costs, tool_usage)
     tool_md = render_tool_markdown(tool_rows)

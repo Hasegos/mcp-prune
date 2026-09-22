@@ -1,4 +1,5 @@
 """ponytail self-check: run `python test_mcp_prune.py` directly. No framework."""
+from backup import BACKUP_DIR
 from inventory import _find_mcp_servers
 from parse_logs import _event_time, bare_tool_name, server_of
 from report import build_rows, build_tool_rows, render_markdown, render_tool_markdown
@@ -35,7 +36,7 @@ def test_find_mcp_servers_nested():
 
 
 def test_build_rows_and_ranking():
-    servers = {"dead": {}, "alive": {}}
+    servers = {"dead": {"command": "node"}, "alive": {}}
     usage = {"alive": {"calls": 10}}
     costs = {
         "dead": {"cost_tokens": 4000, "tool_count": 3},
@@ -43,8 +44,13 @@ def test_build_rows_and_ranking():
     }
     rows = build_rows(servers, usage, costs)
     assert rows[0]["name"] == "dead"  # 0 calls -> ranked worst first
-    md = render_markdown(rows)
+    md = render_markdown(rows, servers)
     assert "claude mcp remove dead -s user" in md
+    assert "restore.py" in md
+
+    backup_path = BACKUP_DIR / "dead.json"
+    assert backup_path.exists()  # a removal recommendation auto-backs up the config
+    backup_path.unlink()  # test cleanup - don't leave artifacts in the real home dir
 
 
 def test_build_tool_rows():

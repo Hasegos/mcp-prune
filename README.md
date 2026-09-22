@@ -4,7 +4,13 @@ Claude Code plugin that audits configured MCP servers: how many context
 tokens each one's tool schemas cost per session, versus how often its
 tools were actually called in your recent session logs. Ranks servers by
 cost-per-use and suggests `claude mcp remove` for dead weight — plus a
-per-tool breakdown so you can see exactly which tool is the expensive one.
+per-tool breakdown so you can see exactly which tool is the expensive one,
+with a $ figure next to every token count so the cost isn't just an
+abstract number.
+
+Removal is reversible: any server flagged for removal has its config
+auto-backed up first, and the report includes the exact command to
+restore it.
 
 ## Install
 

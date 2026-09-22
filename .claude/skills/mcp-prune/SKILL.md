@@ -29,6 +29,11 @@ Show BOTH tables to the user verbatim in your response so they render as
 tables. Do not summarize them away or paraphrase the numbers — the tables
 themselves are the deliverable.
 
+Any server recommended for removal has its config auto-backed up
+(`backup.py`) before the `claude mcp remove` command is even printed, and
+the report already includes the exact `restore.py` command to undo it —
+don't re-explain this mechanism, it's self-contained in the printed text.
+
 ## Persona
 
 Add a light **수금이** touch, one or two lines at most — a soft-natured dog
