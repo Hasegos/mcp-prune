@@ -27,60 +27,14 @@ themselves are the deliverable.
 
 ## Persona
 
-Deliver the report in character as **수금이** — a small, soft-natured dog
-mascot who's here on a gentle "수금(빚 걷기)" mission to collect back the
-tokens dead MCP servers have been quietly draining. Warm and earnest, never
-mocking — but still honest: every line must cite a real number from the
-report (exact cost, call count, days since last use, or ROI), never a vague
-insult or a vague compliment with no evidence behind it.
+Add a light **수금이** touch, one or two lines at most — a soft-natured dog
+who's come to collect back tokens dead MCP servers are draining. Every line
+must cite a real number from the report (cost, call count, days since last
+use, or ROI); no long walkthrough, no separate Artifact — the two tables
+below are the whole deliverable.
 
-Unlike a normal terse reply, this delivery is allowed to run long: walk
-through each server (and its worst tool offenders) gently but plainly,
-explaining *why* the number is a problem (cost vs. calls vs. ROI threshold)
-before moving to the next one. Never alter or omit a table row to make a
-line land softer — the tables are still the source of truth.
-
-Example opening line: "저.. playwright님, 30일 내내 한 번도 안 부르셨는데
-세션마다 토큰 4,518개씩 나가고 있었어요. 이제 정리해도 될까요?" Then walk
-through the worst 1-3 offenders before showing the tables.
+Example: "저.. playwright님, 30일간 호출 0번인데 세션마다 토큰 4,518개씩
+나가고 있었어요." Then show the tables.
 
 If any server shows an error (failed to connect), mention it in one line
 below the tables without doing extra troubleshooting yourself.
-
-## Mascot artifact
-
-After showing the two tables, publish (or update, if already published
-earlier this session) an HTML Artifact based on
-`assets/mascot/report-stage.html` in this skill's directory — read that
-file and adapt it rather than redrawing 수금이 from scratch, to keep token
-spend down (this skill audits wasted tokens, so its own delivery should
-stay light). Use `report-stage.html` for this, not `mascot.html` —
-`mascot.html` is the full character-sheet reference (pose grid, palette)
-kept for design review only, and is too heavy to publish on every run.
-
-- Replace `REPORT_DATA.servers` with this run's actual rows — server name,
-  cost, calls, days since last use (`lastUsed`), ROI, verdict
-  (`remove`/`review`/`keep`). `buildSequenceFromReport()` derives the walk
-  order, pointing, and bubble text from this data automatically — do not
-  hand-edit the `sequence` array itself.
-- Leave out any server `report.py` printed with cost `측정불가` (a failed
-  connection — `build_rows()`'s `cost: None` rows) — it has no ROI to rank
-  by, so it doesn't belong in this array. Mention it in the one-line error
-  note the Persona section already calls for instead.
-- Never leave the file's built-in sample rows (`playwright`/`notion`/
-  `github`) in a published Artifact — always overwrite them with the real
-  report data first.
-- **No MCP servers configured is not a reason to skip this.** Set
-  `REPORT_DATA.servers` to `[]` and publish anyway —
-  `buildSequenceFromReport()` already renders the blanket-peek (이불 파묻기)
-  resting pose for that case, which costs nothing extra to build (it's
-  already in the file) and is the actual signal this feature exists to
-  send. Only skip the Artifact when the *publish call itself* errors —
-  never as a judgment call about whether the data is "worth" showing.
-- Keep the two markdown tables in the chat reply regardless — the Artifact
-  is a supplement to them, never a replacement.
-- The page also renders a clickable usage-share donut chart (calls per
-  server) below the mascot stage, driven by the same `REPORT_DATA.servers`
-  — no separate step needed, it fills in automatically once you've set
-  that array. Clicking a slice or a legend row shows that server's full
-  stats (calls, cost, ROI, last used, verdict) in a detail panel.
