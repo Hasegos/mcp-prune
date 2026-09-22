@@ -12,6 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import decisions
 from backup import backup as backup_server
 from inventory import list_servers
 from parse_logs import usage_report
@@ -88,18 +89,22 @@ def build_rows(servers: dict, usage: dict, costs: dict) -> list:
     return rows
 
 
-def render_markdown(rows: list, servers: dict) -> str:
+def render_markdown(rows: list, servers: dict, history: dict) -> str:
     """Render the per-server ranking table (and removal commands) as markdown.
 
-    Every 0-call server gets its config backed up (see backup.py) before its
-    removal command is printed, so the removal it's about to recommend is
-    reversible with one `restore.py` command rather than a one-way decision.
+    Every freshly-flagged 0-call server gets its config backed up (see
+    backup.py) before its removal command is printed, so the removal it's
+    about to recommend is reversible with one `restore.py` command rather
+    than a one-way decision. A server the user already decided to keep
+    (see decisions.py) is skipped instead, unless its cost has grown
+    enough since that decision to be worth re-asking about.
 
     @param rows: `build_rows()` output.
     @param servers: `list_servers()` output - the raw configs to back up.
+    @param history: `decisions.load()` (or `sync_removed()`) output.
     @returns: A markdown table, plus a fenced `claude mcp remove` block for
-        any 0-call server and an approximation footnote when any cost was
-        estimated rather than measured exactly.
+        any freshly-flagged 0-call server and an approximation footnote
+        when any cost was estimated rather than measured exactly.
     """
     lines = [
         "| 서버 | 세션당 비용 | 호출횟수 | 마지막 사용 | ROI(비용/호출) | 권고 |",
@@ -112,7 +117,9 @@ def render_markdown(rows: list, servers: dict) -> str:
         if r["cost"] is None:
             lines.append(f"| {r['name']} | 측정불가 | {r['calls']} | {last_used} | - | ⚪ {r['note']} |")
             continue
-        if r["calls"] == 0:
+        if r["calls"] == 0 and decisions.is_settled(r["name"], r["cost"], history):
+            verdict = "🟢 유지 (리뷰 완료)"
+        elif r["calls"] == 0:
             verdict = "🔴 제거 권장"
             remove_cmds.append(r["name"])
             backup_server(r["name"], servers.get(r["name"], {}))
@@ -201,6 +208,10 @@ def main():
     args = parser.parse_args()
 
     servers = list_servers()
+    # detect removals that actually happened since the last report (a
+    # backed-up server that's no longer configured) before bailing out on
+    # an empty config, so those decisions get recorded either way
+    history = decisions.sync_removed(set(servers.keys()))
     if not servers:
         print("설정된 MCP 서버가 없습니다 (.mcp.json / ~/.claude.json 확인).")
         return
@@ -209,7 +220,7 @@ def main():
     costs = asyncio.run(estimate_all(servers))
 
     rows = build_rows(servers, usage, costs)
-    print(render_markdown(rows, servers))
+    print(render_markdown(rows, servers, history))
 
     tool_rows = build_tool_rows(costs, tool_usage)
     tool_md = render_tool_markdown(tool_rows)

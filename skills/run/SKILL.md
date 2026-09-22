@@ -30,6 +30,22 @@ Any server recommended for removal has its config auto-backed up
 the report already includes the exact `restore.py` command to undo it —
 don't re-explain this mechanism, it's self-contained in the printed text.
 
+## Decision memory
+
+If the user responds to the report by telling you to keep a specific
+flagged server (e.g. "playwright는 남겨둬"), record it so it stops being
+re-flagged, passing that server's cost token count from the table you
+just showed (needed so the 1.5x re-nudge safeguard below actually works):
+
+```
+python <skill base directory>/scripts/decisions.py keep <server-name> <cost_tokens>
+```
+
+A kept server is skipped in future reports and session-start nudges
+unless its cost later grows past 1.5x what it was when kept. Actual
+removals need no action from you — the next report run detects them
+automatically by noticing a backed-up server disappeared from the config.
+
 ## Persona
 
 Add a light **수금이** touch, one or two lines at most — a soft-natured dog

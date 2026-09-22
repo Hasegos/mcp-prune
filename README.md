@@ -12,6 +12,11 @@ Removal is reversible: any server flagged for removal has its config
 auto-backed up first, and the report includes the exact command to
 restore it.
 
+Decisions are remembered globally (`~/.claude/mcp-prune/history.json`), not
+per project: once you tell it to keep a server, it stops re-flagging that
+server everywhere — until its cost grows past 1.5x what it was when you
+decided. Actual removals are picked up automatically on the next run.
+
 ## Install
 
 ```
@@ -79,3 +84,7 @@ See `skills/run/scripts/`:
   tool schemas (server total + per-tool) with Anthropic's `count_tokens`
   endpoint or a free local approximation
 - `report.py` — ranks servers by cost ÷ calls, prints both markdown reports
+- `backup.py` / `restore.py` — snapshot a flagged server's config before
+  removal, and restore it with one command
+- `decisions.py` — records keep/removed decisions globally, so a reviewed
+  server isn't re-flagged everywhere

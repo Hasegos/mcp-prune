@@ -24,6 +24,7 @@ def main():
         wasted, since a hook must never block or spam session start.
     """
     try:
+        import decisions
         from inventory import list_servers
         from parse_logs import usage_report
 
@@ -31,7 +32,11 @@ def main():
         if not servers:
             return
         usage, _ = usage_report(days=30)
-        unused = [name for name in servers if usage.get(name, {}).get("calls", 0) == 0]
+        history = decisions.load()
+        unused = [
+            name for name in servers
+            if usage.get(name, {}).get("calls", 0) == 0 and not decisions.is_kept(name, history)
+        ]
         if unused:
             # Framed as a clearly separate status block, with an explicit
             # instruction on how to surface it - this becomes additionalContext
