@@ -33,9 +33,18 @@ def main():
         usage, _ = usage_report(days=30)
         unused = [name for name in servers if usage.get(name, {}).get("calls", 0) == 0]
         if unused:
+            # Framed as a clearly separate status block, with an explicit
+            # instruction on how to surface it - this becomes additionalContext
+            # Claude sees at session start, so without that instruction it could
+            # get woven into the reply to whatever the user actually asked,
+            # which reads as a jarring non sequitur.
             print(
-                f"💤 mcp-prune: MCP 서버 {len(unused)}개가 30일간 한 번도 안 불렸어요 "
-                "— /mcp-prune 실행해서 확인해보세요"
+                "[mcp-prune 세션 시작 알림 - 사용자의 실제 첫 메시지에 답하기 전에는 언급하지 말 것]\n"
+                f"📋 mcp-prune 현황: MCP 서버 {len(unused)}개가 30일간 호출 0번\n"
+                "사용자의 실제 요청에 먼저 답변하세요. 그 답변 끝에 위 현황을 "
+                "'📋 mcp-prune 현황: ...' 형태로 한 줄만 짧게 덧붙이고, "
+                "필요하면 /mcp-prune:run으로 확인해보라고 안내하세요. "
+                "사용자가 이미 이 대화에서 mcp-prune 관련 요청을 했다면 이 알림은 생략하세요."
             )
     except Exception:
         return  # a hook must never block or crash session start
